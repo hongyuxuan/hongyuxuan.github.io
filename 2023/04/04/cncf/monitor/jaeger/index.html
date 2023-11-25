@@ -1,0 +1,1028 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#272727">
+  <meta name="author" content="洪宇轩">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="提到链路跟踪，或者叫全链路监控，或者叫APM(Application Performance Management)，具体含义和原理不赘述，开源方案有skywalking、zipkin、elasticapm等工具，商业产品有基调听云等等，但在云原生领域，也有一个CNCF已毕业项目jaeger同样发展迅速。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解">
+<meta property="og:url" content="http://example.com/2023/04/04/cncf/monitor/jaeger/index.html">
+<meta property="og:site_name" content="洪宇轩的博客">
+<meta property="og:description" content="提到链路跟踪，或者叫全链路监控，或者叫APM(Application Performance Management)，具体含义和原理不赘述，开源方案有skywalking、zipkin、elasticapm等工具，商业产品有基调听云等等，但在云原生领域，也有一个CNCF已毕业项目jaeger同样发展迅速。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2Fjaeger_arch.png">
+<meta property="article:published_time" content="2023-04-04T11:46:18.000Z">
+<meta property="article:modified_time" content="2023-11-25T02:33:37.429Z">
+<meta property="article:author" content="洪宇轩">
+<meta property="article:tag" content="cloud native">
+<meta property="article:tag" content="observability">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2Fjaeger_arch.png">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解 - 洪宇轩的博客</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+  
+<link rel="stylesheet" href="/css/font_douyin/iconfont.css">
+<link rel="stylesheet" href="/css/font_xiaohongshu/iconfont.css">
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.5-a","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 60vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>洪宇轩的博客</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger_banner.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-author" aria-hidden="true"></i>
+        洪宇轩
+      </span>
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-04-04 19:46" pubdate>
+          2023年4月4日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          17k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          141 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar category-bar" style="margin-right: -1rem">
+    
+
+
+
+
+
+<div class="category-list">
+  
+  
+    
+    
+    
+    <div class="category row nomargin-x">
+      <a class="category-item 
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="云原生"
+        id="heading-03eadd6d06506d54fb81026b2f5963c8" role="tab" data-toggle="collapse" href="#collapse-03eadd6d06506d54fb81026b2f5963c8"
+        aria-expanded="true"
+      >
+        云原生
+        <span class="list-group-count">(10)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse show" id="collapse-03eadd6d06506d54fb81026b2f5963c8"
+           role="tabpanel" aria-labelledby="heading-03eadd6d06506d54fb81026b2f5963c8">
+        
+        
+          
+          
+  <div class="category-post-list">
+    
+    
+  </div>
+
+          
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="kubernetes"
+        id="heading-b76e98af9aaa680979bf5a65b2d5a105" role="tab" data-toggle="collapse" href="#collapse-b76e98af9aaa680979bf5a65b2d5a105"
+        aria-expanded="false"
+      >
+        kubernetes
+        <span class="list-group-count">(5)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-b76e98af9aaa680979bf5a65b2d5a105"
+           role="tabpanel" aria-labelledby="heading-b76e98af9aaa680979bf5a65b2d5a105">
+        
+        
+          
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/04/17/cncf/kubernetes/k8s_summary/" title="K8S系列文章之一：Kubernetes概览"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S系列文章之一：Kubernetes概览</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/04/17/cncf/kubernetes/kubeadm/" title="K8S系列文章之二：用kubeadm管理集群"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S系列文章之二：用kubeadm管理集群</span>
+        </a>
+      
+    
+  </div>
+
+          
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="kubernetes storage"
+        id="heading-92c18f6660d8584ff3ee6c0abde74673" role="tab" data-toggle="collapse" href="#collapse-92c18f6660d8584ff3ee6c0abde74673"
+        aria-expanded="false"
+      >
+        kubernetes storage
+        <span class="list-group-count">(3)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-92c18f6660d8584ff3ee6c0abde74673"
+           role="tabpanel" aria-labelledby="heading-92c18f6660d8584ff3ee6c0abde74673">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/hostpath/" title="K8S HostPath StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S HostPath StorageClass</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/nfs/" title="K8S NFS StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S NFS StorageClass</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/rook-ceph/" title="K8S Rook Ceph StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S Rook Ceph StorageClass</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+        
+      </div>
+    </div>
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem 
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="可观测性"
+        id="heading-06ec5192579bfd44ce6ddc96a2751203" role="tab" data-toggle="collapse" href="#collapse-06ec5192579bfd44ce6ddc96a2751203"
+        aria-expanded="true"
+      >
+        可观测性
+        <span class="list-group-count">(2)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse show" id="collapse-06ec5192579bfd44ce6ddc96a2751203"
+           role="tabpanel" aria-labelledby="heading-06ec5192579bfd44ce6ddc96a2751203">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2023/05/05/cncf/monitor/go-zero-jaeger/" title="go-zero+opentelemetry+jaeger云原生链路跟踪实践"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">go-zero+opentelemetry+jaeger云原生链路跟踪实践</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2023/04/04/cncf/monitor/jaeger/" title="云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解"
+           class="list-group-item list-group-item-action
+           active">
+          <span class="category-post">云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="微服务"
+        id="heading-79c287218d34050f6bd19986cd05b499" role="tab" data-toggle="collapse" href="#collapse-79c287218d34050f6bd19986cd05b499"
+        aria-expanded="false"
+      >
+        微服务
+        <span class="list-group-count">(3)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-79c287218d34050f6bd19986cd05b499"
+           role="tabpanel" aria-labelledby="heading-79c287218d34050f6bd19986cd05b499">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/03/06/cncf/microservice/istio1/" title="Istio系列文章之（一）基本原理介绍"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（一）基本原理介绍</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/03/08/cncf/microservice/istio3/" title="Istio系列文章之（三）功能快速入门"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（三）功能快速入门</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/03/07/cncf/microservice/istio2/" title="Istio系列文章之（二）安装部署"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（二）安装部署</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+        
+      </div>
+    </div>
+  
+</div>
+
+
+  </aside>
+
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <div class="note note-primary">
+            <p>提到链路跟踪，或者叫全链路监控，或者叫APM(Application Performance Management)，具体含义和原理不赘述，开源方案有skywalking、zipkin、elasticapm等工具，商业产品有基调听云等等，但在云原生领域，也有一个CNCF已毕业项目jaeger同样发展迅速。</p>
+          </div>
+
+<p><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2Fcncf_landscape.PNG" srcset="/img/loading.gif" lazyload></p>
+<p>本文将详细讲述如何在K8S环境部署一整套jaeger工具以实现链路跟踪。同时由于jaeger-ui里的monitor功能需要使用到OpenTelemetry Collector，因此本文将一并部署并讲解原理。</p>
+<h1 id="Jaeger架构"><a href="#Jaeger架构" class="headerlink" title="Jaeger架构"></a>Jaeger架构</h1><p><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2Fjaeger_arch.png" srcset="/img/loading.gif" lazyload></p>
+<p>jaeger组件总共有四个：</p>
+<ul>
+<li>jaeger-agent</li>
+<li>jaeger-collector</li>
+<li>jaeger-query(ui)</li>
+<li>jaeger-spark-dependencies</li>
+</ul>
+<p>其中jaeger-agent和应用部署在一个主机上或者一个容器pod里。在实际应用中，jaeger-agent通常已经集成到应用框架里了（如go-zero自带jaeger），或者由opentelemetry SDK（如kotlin或springboot）实现，因此无需额外再部署jaeger-agent。</p>
+<p>jaeger-collector是收集trace的组件，它可提供多种收集方式，本文介绍两种：zipkin方式（监听在9411）和jaeger方式（监听在14268）。</p>
+<p>jaeger将trace存储到数据库，可支持多种关系型和非关系型数据库，本文将使用elasticsearch-7.15做数据存储。</p>
+<h1 id="Jaeger部署"><a href="#Jaeger部署" class="headerlink" title="Jaeger部署"></a>Jaeger部署</h1><h2 id="部署jaeger-collector"><a href="#部署jaeger-collector" class="headerlink" title="部署jaeger-collector"></a>部署jaeger-collector</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-collector</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">jaeger-test</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>    <span class="hljs-attr">app.kubernetes.io/component:</span> <span class="hljs-string">collector</span><br>    <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">jaeger</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">deployment.kubernetes.io/revision:</span> <span class="hljs-string">&#x27;15&#x27;</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">1</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>      <span class="hljs-attr">app.kubernetes.io/component:</span> <span class="hljs-string">collector</span><br>      <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">jaeger</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-literal">null</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>        <span class="hljs-attr">app.kubernetes.io/component:</span> <span class="hljs-string">collector</span><br>        <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">jaeger</span><br>      <span class="hljs-attr">annotations:</span><br>        <span class="hljs-attr">kubesphere.io/restartedAt:</span> <span class="hljs-string">&#x27;2023-04-04T07:05:11.313Z&#x27;</span><br>    <span class="hljs-attr">spec:</span><br>      <span class="hljs-attr">volumes:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration-volume</span><br>          <span class="hljs-attr">configMap:</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration</span><br>            <span class="hljs-attr">items:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">collector</span><br>                <span class="hljs-attr">path:</span> <span class="hljs-string">collector.yaml</span><br>            <span class="hljs-attr">defaultMode:</span> <span class="hljs-number">420</span><br>      <span class="hljs-attr">containers:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-collector</span><br>          <span class="hljs-attr">image:</span> <span class="hljs-string">&gt;-</span><br><span class="hljs-string">            jaegertracing/jaeger-collector:1.43</span><br><span class="hljs-string"></span>          <span class="hljs-attr">args:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;--config-file=/conf/collector.yaml&#x27;</span><br>          <span class="hljs-attr">ports:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">14267</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">14268</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">9411</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">14250</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>          <span class="hljs-attr">env:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">SPAN_STORAGE_TYPE</span><br>              <span class="hljs-attr">valueFrom:</span><br>                <span class="hljs-attr">configMapKeyRef:</span><br>                  <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration</span><br>                  <span class="hljs-attr">key:</span> <span class="hljs-string">span-storage-type</span><br>          <span class="hljs-attr">resources:</span> &#123;&#125;<br>          <span class="hljs-attr">volumeMounts:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration-volume</span><br>              <span class="hljs-attr">mountPath:</span> <span class="hljs-string">/conf</span><br>          <span class="hljs-attr">terminationMessagePath:</span> <span class="hljs-string">/dev/termination-log</span><br>          <span class="hljs-attr">terminationMessagePolicy:</span> <span class="hljs-string">File</span><br>          <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>      <span class="hljs-attr">restartPolicy:</span> <span class="hljs-string">Always</span><br>      <span class="hljs-attr">terminationGracePeriodSeconds:</span> <span class="hljs-number">30</span><br>      <span class="hljs-attr">dnsPolicy:</span> <span class="hljs-string">ClusterFirst</span><br>      <span class="hljs-attr">serviceAccountName:</span> <span class="hljs-string">default</span><br>      <span class="hljs-attr">serviceAccount:</span> <span class="hljs-string">default</span><br>      <span class="hljs-attr">securityContext:</span> &#123;&#125;<br>      <span class="hljs-attr">schedulerName:</span> <span class="hljs-string">default-scheduler</span><br>  <span class="hljs-attr">strategy:</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">RollingUpdate</span><br>    <span class="hljs-attr">rollingUpdate:</span><br>      <span class="hljs-attr">maxUnavailable:</span> <span class="hljs-number">25</span><span class="hljs-string">%</span><br>      <span class="hljs-attr">maxSurge:</span> <span class="hljs-number">25</span><span class="hljs-string">%</span><br>  <span class="hljs-attr">revisionHistoryLimit:</span> <span class="hljs-number">10</span><br>  <span class="hljs-attr">progressDeadlineSeconds:</span> <span class="hljs-number">600</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-collector</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">jaeger-test</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger-collector</span><br>  <span class="hljs-attr">annotations:</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-collector-tchannel</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">14267</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">14267</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-collector-http</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">14268</span>  <span class="hljs-comment"># jaeger agent通过http将trace送到此端口</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">14268</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-collector-zipkin</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">9411</span>  <span class="hljs-comment"># opentelemetry通过http将trace送到此端口</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">9411</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-grpc</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">14250</span>  <span class="hljs-comment"># opentelemetry collector通过grpc将trace送到此端口</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">14250</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>    <span class="hljs-attr">app.kubernetes.io/component:</span> <span class="hljs-string">collector</span><br>    <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">jaeger</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-number">10.96</span><span class="hljs-number">.73</span><span class="hljs-number">.35</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">sessionAffinity:</span> <span class="hljs-string">None</span><br></code></pre></td></tr></table></figure>
+
+<p>其中用到的collector.yaml以configmap的方式挂载到容器的&#x2F;conf&#x2F;collector.yaml</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment"># collector.yaml</span><br><span class="hljs-attr">es:</span><br>  <span class="hljs-attr">server-urls:</span> <span class="hljs-string">http://es.xxx.io</span> <span class="hljs-comment"># 需要有一个es</span><br>  <span class="hljs-attr">username:</span> <span class="hljs-string">elastic</span><br>  <span class="hljs-attr">password:</span> <span class="hljs-string">&#x27;***********&#x27;</span><br><span class="hljs-attr">exporters:</span><br>  <span class="hljs-attr">opentelemetry:</span><br>    <span class="hljs-attr">endpoint:</span> <span class="hljs-string">&quot;otel-collector:55678&quot;</span><br><span class="hljs-attr">collector:</span><br>  <span class="hljs-attr">zipkin:</span><br>    <span class="hljs-attr">http-port:</span> <span class="hljs-number">9411</span>  <span class="hljs-comment"># zipkin方式收集trace</span><br>  <span class="hljs-attr">jaeger:</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">host-port:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><span class="hljs-string">:14269</span>  <span class="hljs-comment"># jaeger admin HTTP server（没用上）</span><br></code></pre></td></tr></table></figure>
+
+<h2 id="部署jaeger-query"><a href="#部署jaeger-query" class="headerlink" title="部署jaeger-query"></a>部署jaeger-query</h2><p>jaeger-query是前端界面</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-query</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">jaeger-test</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>    <span class="hljs-attr">jaeger-infra:</span> <span class="hljs-string">query-deployment</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">deployment.kubernetes.io/revision:</span> <span class="hljs-string">&#x27;5&#x27;</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">1</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>      <span class="hljs-attr">jaeger-infra:</span> <span class="hljs-string">query-pod</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-literal">null</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>        <span class="hljs-attr">jaeger-infra:</span> <span class="hljs-string">query-pod</span><br>      <span class="hljs-attr">annotations:</span><br>        <span class="hljs-attr">prometheus.io/port:</span> <span class="hljs-string">&#x27;16686&#x27;</span><br>        <span class="hljs-attr">prometheus.io/scrape:</span> <span class="hljs-string">&#x27;true&#x27;</span><br>    <span class="hljs-attr">spec:</span><br>      <span class="hljs-attr">volumes:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration-volume</span><br>          <span class="hljs-attr">configMap:</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration</span><br>            <span class="hljs-attr">items:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">query</span><br>                <span class="hljs-attr">path:</span> <span class="hljs-string">query.yaml</span><br>            <span class="hljs-attr">defaultMode:</span> <span class="hljs-number">420</span><br>      <span class="hljs-attr">containers:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-query</span><br>          <span class="hljs-attr">image:</span> <span class="hljs-string">&gt;-</span><br><span class="hljs-string">            jaegertracing/jaeger-query:1.43</span><br><span class="hljs-string"></span>          <span class="hljs-attr">args:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;--config-file=/conf/query.yaml&#x27;</span><br>          <span class="hljs-attr">ports:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">16686</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">16685</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">16687</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>          <span class="hljs-attr">env:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">SPAN_STORAGE_TYPE</span><br>              <span class="hljs-attr">valueFrom:</span><br>                <span class="hljs-attr">configMapKeyRef:</span><br>                  <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration</span><br>                  <span class="hljs-attr">key:</span> <span class="hljs-string">span-storage-type</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">METRICS_STORAGE_TYPE</span><br>              <span class="hljs-attr">value:</span> <span class="hljs-string">prometheus</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">PROMETHEUS_SERVER_URL</span><br>              <span class="hljs-attr">value:</span> <span class="hljs-string">&#x27;http://10.50.89.17:8080&#x27;</span><br>          <span class="hljs-attr">resources:</span> &#123;&#125;<br>          <span class="hljs-attr">volumeMounts:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration-volume</span><br>              <span class="hljs-attr">mountPath:</span> <span class="hljs-string">/conf</span><br>          <span class="hljs-attr">terminationMessagePath:</span> <span class="hljs-string">/dev/termination-log</span><br>          <span class="hljs-attr">terminationMessagePolicy:</span> <span class="hljs-string">File</span><br>          <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>      <span class="hljs-attr">restartPolicy:</span> <span class="hljs-string">Always</span><br>      <span class="hljs-attr">terminationGracePeriodSeconds:</span> <span class="hljs-number">30</span><br>      <span class="hljs-attr">dnsPolicy:</span> <span class="hljs-string">ClusterFirst</span><br>      <span class="hljs-attr">securityContext:</span> &#123;&#125;<br>      <span class="hljs-attr">schedulerName:</span> <span class="hljs-string">default-scheduler</span><br>  <span class="hljs-attr">strategy:</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">RollingUpdate</span><br>    <span class="hljs-attr">rollingUpdate:</span><br>      <span class="hljs-attr">maxUnavailable:</span> <span class="hljs-number">25</span><span class="hljs-string">%</span><br>      <span class="hljs-attr">maxSurge:</span> <span class="hljs-number">25</span><span class="hljs-string">%</span><br>  <span class="hljs-attr">revisionHistoryLimit:</span> <span class="hljs-number">10</span><br>  <span class="hljs-attr">progressDeadlineSeconds:</span> <span class="hljs-number">600</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-query</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">jaeger-test</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger-query</span><br>  <span class="hljs-attr">annotations:</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-grpc</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">16685</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">16685</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-query</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">16686</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">16686</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-admin</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">16687</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">16687</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">jaeger</span><br>    <span class="hljs-attr">jaeger-infra:</span> <span class="hljs-string">query-pod</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-number">10.96</span><span class="hljs-number">.161</span><span class="hljs-number">.39</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">sessionAffinity:</span> <span class="hljs-string">None</span><br></code></pre></td></tr></table></figure>
+
+<p>其中两个环境变量很重要：<br>METRICS_STORAGE_TYPE：设置此值为prometheus才能开启UI上的monitor页面<br>PROMETHEUS_SERVER_URL：设置prometheus地址，monitor数据将从该prometheus上获取<br>再设置一个ingress或者nodeport暴露query的16686端口即可<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2F1.png" srcset="/img/loading.gif" lazyload></p>
+<p>此时还没有任何trace数据</p>
+<h2 id="部署jaeger-spark-dependencies"><a href="#部署jaeger-spark-dependencies" class="headerlink" title="部署jaeger-spark-dependencies"></a>部署jaeger-spark-dependencies</h2><p>这是一个计算链路图的组件，他周期性的从elasticsearch读取trace并计算依赖链路，然后再写回elasticsearch的jaeger-dependencies索引。</p>
+<h1 id="应用接入"><a href="#应用接入" class="headerlink" title="应用接入"></a>应用接入</h1><h2 id="go-zero应用接入"><a href="#go-zero应用接入" class="headerlink" title="go-zero应用接入"></a>go-zero应用接入</h2><p>配置文件中增加jaeger相关模块：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">Name:</span> <span class="hljs-string">Devops</span><br><span class="hljs-attr">Host:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><br><span class="hljs-attr">Port:</span> <span class="hljs-number">8888</span><br><span class="hljs-attr">Timeout:</span> <span class="hljs-number">60000</span><br><span class="hljs-attr">Log:</span><br>  <span class="hljs-attr">Encoding:</span> <span class="hljs-string">plain</span><br>  <span class="hljs-attr">Level:</span> <span class="hljs-string">debug</span> <br><span class="hljs-attr">Prometheus:</span><br>  <span class="hljs-attr">Host:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><br>  <span class="hljs-attr">Port:</span> <span class="hljs-number">10990</span><br>  <span class="hljs-attr">Path:</span> <span class="hljs-string">/metrics</span><br><span class="hljs-attr">Namespace:</span> <span class="hljs-string">jaeger-test</span><br><span class="hljs-attr">Kubeconfig:</span> <span class="hljs-string">./kubeconfig</span><br><span class="hljs-attr">Environment:</span> <span class="hljs-string">local</span><br><span class="hljs-attr">Telemetry:</span><br>  <span class="hljs-attr">Name:</span> <span class="hljs-string">fiops-devops</span><br>  <span class="hljs-attr">Endpoint:</span> <span class="hljs-string">http://jaeger-collector.jaeger-test:14268/api/traces</span><br>  <span class="hljs-attr">Sampler:</span> <span class="hljs-number">1.0</span><br>  <span class="hljs-attr">Batcher:</span> <span class="hljs-string">jaeger</span><br></code></pre></td></tr></table></figure>
+
+<p>再在UI查看<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2F2.png" srcset="/img/loading.gif" lazyload></p>
+<h2 id="opentelemetry接入"><a href="#opentelemetry接入" class="headerlink" title="opentelemetry接入"></a>opentelemetry接入</h2><p>启动参数增加：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs shell">-Dotel.propagators=b3<br>-Dotel.instrumentation.common.default-enabled=true<br>-javaagent:/path/to/you/opentelemetry-javaagent.jar<br>-Dotel.instrumentation.common.db-statement-sanitizer.enabled=false<br>-Dotel.instrumentation.redisson.enabled=false<br>-Dotel.metrics.exporter=none <br>-Dotel.traces.exporter=zipkin <br>-Dotel.exporter.zipkin.endpoint=http://jaeger-collector.jaeger-test:9411/api/v2/spans<br></code></pre></td></tr></table></figure>
+<p>注意最后的zipkin.endpoint指向了jaeger-collector的9411端口</p>
+<p>UI查看<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2F3.png" srcset="/img/loading.gif" lazyload></p>
+<h1 id="elasticsearch配置"><a href="#elasticsearch配置" class="headerlink" title="elasticsearch配置"></a>elasticsearch配置</h1><p>jaeger会在elasticsearch里创建三个索引模板：</p>
+<ul>
+<li>jaeger-service：存放所有已收集的serviceName</li>
+<li>jaeger-span：存放trace数据，每个doc是一个span</li>
+<li>Jaeger-dependencies：存放spark计算后的依赖图</li>
+</ul>
+<p>jaeger提供两种方式的索引管理，一个是rollover、一个是ILM</p>
+<h2 id="rollover方式（默认方式）"><a href="#rollover方式（默认方式）" class="headerlink" title="rollover方式（默认方式）"></a>rollover方式（默认方式）</h2><p>该方式jaeger默认每天创建一个带日期后缀的索引，如：jaeger-span-2023-04-04，可查看其数据：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><code class="hljs json"><span class="hljs-punctuation">&#123;</span><br>    <span class="hljs-attr">&quot;_index&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;jaeger-span-2023-04-04&quot;</span><span class="hljs-punctuation">,</span><br>    <span class="hljs-attr">&quot;_type&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;_doc&quot;</span><span class="hljs-punctuation">,</span><br>    <span class="hljs-attr">&quot;_id&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;mu72SocBT2RQOvh7w_S0&quot;</span><span class="hljs-punctuation">,</span><br>    <span class="hljs-attr">&quot;_score&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-number">1.0</span><span class="hljs-punctuation">,</span><br>    <span class="hljs-attr">&quot;_source&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-punctuation">&#123;</span><br>      <span class="hljs-attr">&quot;traceID&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;8323e388f8a172e5e404e6873906f4e4&quot;</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;spanID&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;229debb8161b9693&quot;</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;operationName&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;/shelltrade/(authenticate jwttokenfilterwithoutobject)/loadbycriteria&quot;</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;references&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><br>        <span class="hljs-punctuation">&#123;</span><br>          <span class="hljs-attr">&quot;refType&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;CHILD_OF&quot;</span><span class="hljs-punctuation">,</span><br>          <span class="hljs-attr">&quot;traceID&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;8323e388f8a172e5e404e6873906f4e4&quot;</span><span class="hljs-punctuation">,</span><br>          <span class="hljs-attr">&quot;spanID&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;453b0488ff74aca4&quot;</span><br>        <span class="hljs-punctuation">&#125;</span><br>      <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;startTime&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-number">1680589895699132</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;startTimeMillis&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-number">1680589895699</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;duration&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-number">26024</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;tags&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><br>        <span class="hljs-punctuation">&#123;</span><br>          <span class="hljs-attr">&quot;key&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;http.user_agent&quot;</span><span class="hljs-punctuation">,</span><br>          <span class="hljs-attr">&quot;type&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;string&quot;</span><span class="hljs-punctuation">,</span><br>          <span class="hljs-attr">&quot;value&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Ktor client&quot;</span><br>        <span class="hljs-punctuation">&#125;</span><span class="hljs-punctuation">,</span><br>        <span class="hljs-punctuation">&#123;</span><br>          <span class="hljs-attr">&quot;key&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;net.host.name&quot;</span><span class="hljs-punctuation">,</span><br>          <span class="hljs-attr">&quot;type&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;string&quot;</span><span class="hljs-punctuation">,</span><br>          <span class="hljs-attr">&quot;value&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;trd-http-server-6644f77644-gdx4x&quot;</span><br>        <span class="hljs-punctuation">&#125;</span><br>      <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;logs&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span> <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><br>      <span class="hljs-attr">&quot;process&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-punctuation">&#123;</span><br>        <span class="hljs-attr">&quot;serviceName&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;trd-http-server&quot;</span><span class="hljs-punctuation">,</span><br>        <span class="hljs-attr">&quot;tags&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><br>          <span class="hljs-punctuation">&#123;</span><br>            <span class="hljs-attr">&quot;key&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;ip&quot;</span><span class="hljs-punctuation">,</span><br>            <span class="hljs-attr">&quot;type&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;int64&quot;</span><span class="hljs-punctuation">,</span><br>            <span class="hljs-attr">&quot;value&quot;</span> <span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;168464409&quot;</span><br>          <span class="hljs-punctuation">&#125;</span><br>        <span class="hljs-punctuation">]</span><br>      <span class="hljs-punctuation">&#125;</span><br>    <span class="hljs-punctuation">&#125;</span><br>  <span class="hljs-punctuation">&#125;</span><br></code></pre></td></tr></table></figure>
+
+<p>关于rollover配置参考：<br><a target="_blank" rel="noopener" href="https://www.jaegertracing.io/docs/1.43/deployment/#elasticsearch-rollover">https://www.jaegertracing.io/docs/1.43/deployment/#elasticsearch-rollover</a></p>
+<h2 id="ILM方式（推荐）"><a href="#ILM方式（推荐）" class="headerlink" title="ILM方式（推荐）"></a>ILM方式（推荐）</h2><h3 id="创建策略"><a href="#创建策略" class="headerlink" title="创建策略"></a>创建策略</h3><p>手工在ES创建一个ILM策略，名称必须叫：<code>jaeger-ilm-policy</code></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs shell">curl -X PUT http://ESHOST:9200/_ilm/policy/jaeger-ilm-policy \<br>-H &#x27;Content-Type: application/json; charset=utf-8&#x27; \<br>--data-binary @- &lt;&lt; EOF<br>&#123;<br>  &quot;policy&quot;: &#123;<br>    &quot;phases&quot;: &#123;<br>      &quot;hot&quot;: &#123;<br>        &quot;min_age&quot;: &quot;0ms&quot;,<br>        &quot;actions&quot;: &#123;<br>          &quot;rollover&quot;: &#123;<br>            &quot;max_age&quot;: &quot;1d&quot;<br>          &#125;,<br>          &quot;set_priority&quot;: &#123;<br>            &quot;priority&quot;: 100<br>          &#125;<br>        &#125;<br>      &#125;,<br>      &quot;delete&quot;: &#123;<br>        &quot;min_age&quot;: &quot;3d&quot;,<br>        &quot;actions&quot;: &#123;<br>          &quot;delete&quot;: &#123;&#125;<br>        &#125;<br>      &#125;<br>    &#125;<br>  &#125;<br>&#125;<br>EOF<br></code></pre></td></tr></table></figure>
+
+<h3 id="初始化索引"><a href="#初始化索引" class="headerlink" title="初始化索引"></a>初始化索引</h3><p>在K8S创建Job，配置如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">batch/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Job</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-es-rollover</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">jaeger-test</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">spec:</span><br>      <span class="hljs-attr">containers:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">es-rollover-container</span><br>        <span class="hljs-attr">image:</span> <span class="hljs-string">jaegertracing/jaeger-es-rollover:1.43</span><br>        <span class="hljs-attr">args:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;--es.username=elastic&#x27;</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;--es.password=DtvUvl7k80bX5aL9&#x27;</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-string">init</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;http://es.xxx.io&#x27;</span><br>        <span class="hljs-attr">env:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">ES_USE_ILM</span><br>            <span class="hljs-attr">value:</span> <span class="hljs-string">&#x27;true&#x27;</span><br>        <span class="hljs-attr">resources:</span><br>          <span class="hljs-attr">limits:</span><br>            <span class="hljs-attr">cpu:</span> <span class="hljs-string">200m</span><br>            <span class="hljs-attr">memory:</span> <span class="hljs-string">200Mi</span><br>          <span class="hljs-attr">requests:</span><br>            <span class="hljs-attr">cpu:</span> <span class="hljs-string">100m</span><br>            <span class="hljs-attr">memory:</span> <span class="hljs-string">100Mi</span><br>        <span class="hljs-attr">terminationMessagePath:</span> <span class="hljs-string">/dev/termination-log</span><br>        <span class="hljs-attr">terminationMessagePolicy:</span> <span class="hljs-string">File</span><br>        <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">Always</span><br>      <span class="hljs-attr">restartPolicy:</span> <span class="hljs-string">Never</span><br>      <span class="hljs-attr">terminationGracePeriodSeconds:</span> <span class="hljs-number">30</span><br>      <span class="hljs-attr">dnsPolicy:</span> <span class="hljs-string">ClusterFirst</span><br>      <span class="hljs-attr">serviceAccountName:</span> <span class="hljs-string">default</span><br>      <span class="hljs-attr">serviceAccount:</span> <span class="hljs-string">default</span><br>      <span class="hljs-attr">securityContext:</span> &#123;&#125;<br>      <span class="hljs-attr">schedulerName:</span> <span class="hljs-string">default-scheduler</span><br>  <span class="hljs-attr">parallelism:</span> <span class="hljs-number">1</span><br>  <span class="hljs-attr">completions:</span> <span class="hljs-number">1</span><br>  <span class="hljs-attr">backoffLimit:</span> <span class="hljs-number">6</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="配置collector和query参数"><a href="#配置collector和query参数" class="headerlink" title="配置collector和query参数"></a>配置collector和query参数</h3><p>先将jaeger-collector的pod副本降为0，使得collector不再往ES写入，然后删除之前已经存在的三个index template和所有jaeger-开头的索引。然后在jaeger-collector和jaeger-query的启动参数加上<code>--es.use-ilm=true</code>和<code>--es.use-aliases=true</code>，或者在它们的yaml配置文件里增加：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">es:</span><br>  <span class="hljs-attr">use-ilm:</span> <span class="hljs-literal">true</span><br>  <span class="hljs-attr">use-aliases:</span> <span class="hljs-literal">true</span><br></code></pre></td></tr></table></figure>
+
+<p>做完上面的步骤后调大jaeger-collector的pod副本数，观察ES重新创建了三个index template，并且已经自动关联上了上一步手动创建的ILM policy<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2F4.jpg" srcset="/img/loading.gif" lazyload></p>
+<p>观察索引已经出现了-000001，配置成功<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2F5.jpg" srcset="/img/loading.gif" lazyload></p>
+<p>关于ILM配置参考：<br><a target="_blank" rel="noopener" href="https://www.jaegertracing.io/docs/1.43/deployment/#elasticsearch-ilm-support">https://www.jaegertracing.io/docs/1.43/deployment/#elasticsearch-ilm-support</a></p>
+<h1 id="Service-Performance-Monitoring-SPM"><a href="#Service-Performance-Monitoring-SPM" class="headerlink" title="Service Performance Monitoring (SPM)"></a>Service Performance Monitoring (SPM)</h1><p>jaeger还可对trace进行聚合统计，计算出RED(Request, Error, Duration) metrics，并展示在UI的monitor页面。<br>此功能依赖另外一个组件OpenTelemetry Collector，接入后整体流程如下：<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2F6.png" srcset="/img/loading.gif" lazyload></p>
+<p>此时应用不再将trace发往jaeger-collector，而是将trace发送到OpenTelemetry Collector（下文简称otel-collocter），otel-collocter分两路走，一路将trace原封不动发送到jaeger-collocter（由它去展示trace），另一路经过它自己内部的一个pipeline，计算出calls_total、latency_bucket等metrics，并通过自己的8889&#x2F;metrics暴露出去，prometheus配置一个job采集它的8889&#x2F;metrics，然后jaeger-query再去prometheus取回这些metrics，并展示到UI的monitor页面。</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://github.com/jaegertracing/jaeger/tree/main/docker-compose/monitor">https://github.com/jaegertracing/jaeger/tree/main/docker-compose/monitor</a></p>
+<h2 id="部署OpenTelemetry-Collector"><a href="#部署OpenTelemetry-Collector" class="headerlink" title="部署OpenTelemetry Collector"></a>部署OpenTelemetry Collector</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">otel-collector</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">jaeger-test</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">otel-collector</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">deployment.kubernetes.io/revision:</span> <span class="hljs-string">&#x27;51&#x27;</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">1</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">app:</span> <span class="hljs-string">otel-collector</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-literal">null</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">otel-collector</span><br>      <span class="hljs-attr">annotations:</span><br>        <span class="hljs-attr">kubesphere.io/restartedAt:</span> <span class="hljs-string">&#x27;2023-04-04T09:05:57.517Z&#x27;</span><br>    <span class="hljs-attr">spec:</span><br>      <span class="hljs-attr">volumes:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">otel-collector-volume</span><br>          <span class="hljs-attr">configMap:</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">jaeger-configuration</span><br>            <span class="hljs-attr">defaultMode:</span> <span class="hljs-number">420</span><br>      <span class="hljs-attr">containers:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">otel-collector-container</span><br>          <span class="hljs-attr">image:</span> <span class="hljs-string">&gt;-</span><br><span class="hljs-string">            otel/opentelemetry-collector-contrib:0.74.0</span><br><span class="hljs-string"></span>          <span class="hljs-attr">args:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;--config&#x27;</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-string">/etc/otel-collector-config.yml</span><br>          <span class="hljs-attr">ports:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">otel-port</span><br>              <span class="hljs-attr">containerPort:</span> <span class="hljs-number">4317</span>  <span class="hljs-comment"># 此端口没用上</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">metrics</span><br>              <span class="hljs-attr">containerPort:</span> <span class="hljs-number">8888</span>  <span class="hljs-comment"># otel-collector自己的metrics</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">exporter</span>       <span class="hljs-comment"># otel-collector计算trace统计值后通过此端口暴露出去</span><br>              <span class="hljs-attr">containerPort:</span> <span class="hljs-number">8889</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">collector</span>      <span class="hljs-comment"># 应用向otel-collector:14278发送trace数据</span><br>              <span class="hljs-attr">containerPort:</span> <span class="hljs-number">14278</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">zipkin</span>         <span class="hljs-comment"># 应用通过zipkin方式发送trace到9411</span><br>              <span class="hljs-attr">containerPort:</span> <span class="hljs-number">9411</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>          <span class="hljs-attr">resources:</span><br>            <span class="hljs-attr">limits:</span><br>              <span class="hljs-attr">cpu:</span> <span class="hljs-string">200m</span><br>              <span class="hljs-attr">memory:</span> <span class="hljs-string">500Mi</span><br>            <span class="hljs-attr">requests:</span><br>              <span class="hljs-attr">cpu:</span> <span class="hljs-string">100m</span><br>              <span class="hljs-attr">memory:</span> <span class="hljs-string">200Mi</span><br>          <span class="hljs-attr">volumeMounts:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">otel-collector-volume</span><br>              <span class="hljs-attr">mountPath:</span> <span class="hljs-string">/etc/otel-collector-config.yml</span><br>              <span class="hljs-attr">subPath:</span> <span class="hljs-string">otel-collector-config.yml</span><br>          <span class="hljs-attr">terminationMessagePath:</span> <span class="hljs-string">/dev/termination-log</span><br>          <span class="hljs-attr">terminationMessagePolicy:</span> <span class="hljs-string">File</span><br>          <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>      <span class="hljs-attr">restartPolicy:</span> <span class="hljs-string">Always</span><br>      <span class="hljs-attr">terminationGracePeriodSeconds:</span> <span class="hljs-number">30</span><br>      <span class="hljs-attr">dnsPolicy:</span> <span class="hljs-string">ClusterFirst</span><br>      <span class="hljs-attr">serviceAccountName:</span> <span class="hljs-string">default</span><br>      <span class="hljs-attr">serviceAccount:</span> <span class="hljs-string">default</span><br>      <span class="hljs-attr">securityContext:</span> &#123;&#125;<br>      <span class="hljs-attr">schedulerName:</span> <span class="hljs-string">default-scheduler</span><br>  <span class="hljs-attr">strategy:</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">RollingUpdate</span><br>    <span class="hljs-attr">rollingUpdate:</span><br>      <span class="hljs-attr">maxUnavailable:</span> <span class="hljs-number">25</span><span class="hljs-string">%</span><br>      <span class="hljs-attr">maxSurge:</span> <span class="hljs-number">25</span><span class="hljs-string">%</span><br>  <span class="hljs-attr">revisionHistoryLimit:</span> <span class="hljs-number">10</span><br>  <span class="hljs-attr">progressDeadlineSeconds:</span> <span class="hljs-number">600</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">otel-collector</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">jaeger-test</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">otel-collector</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">kubesphere.io/creator:</span> <span class="hljs-string">fanpengfei</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-4317</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">4317</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">4317</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-8888</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">8888</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">8888</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-14278</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">14278</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">14278</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-8889</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">8889</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">8889</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-55678</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">55678</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">55678</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-zipkin</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">9411</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">9411</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">otel-collector</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-number">10.96</span><span class="hljs-number">.7</span><span class="hljs-number">.76</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">sessionAffinity:</span> <span class="hljs-string">None</span><br></code></pre></td></tr></table></figure>
+
+<p>otel-collector的配置文件如下。一个otel-collector由receivers、exporters、processors三部分组成，其中receivers定义了jaeger输入(监听在14278)、zipkin输入(监听在9411)和otlp输入(本文未使用otlp)。exporters定义了输出有三条路径，prometheus(即普米从本机 <a target="_blank" rel="noopener" href="http://xx:8889/metrics">http://xx:8889/metrics</a> 采走)、zipkin(zipkin方式过来的trace统计计算需要发送到本机监听的9411)、jaeger(trace原样输出到jaeger)。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment"># otel-collector-config.yml</span><br><span class="hljs-attr">receivers:</span><br>  <span class="hljs-attr">jaeger:</span><br>    <span class="hljs-attr">protocols:</span><br>      <span class="hljs-attr">thrift_http:</span><br>        <span class="hljs-attr">endpoint:</span> <span class="hljs-string">&quot;0.0.0.0:14278&quot;</span><br>  <span class="hljs-attr">zipkin:</span><br>    <span class="hljs-attr">endpoint:</span> <span class="hljs-string">&quot;0.0.0.0:9411&quot;</span><br>  <span class="hljs-attr">otlp:</span><br>    <span class="hljs-attr">protocols:</span><br>      <span class="hljs-attr">grpc:</span><br>      <span class="hljs-attr">http:</span><br><br>  <span class="hljs-comment"># Dummy receiver that&#x27;s never used, because a pipeline is required to have one.</span><br>  <span class="hljs-attr">otlp/spanmetrics:</span><br>    <span class="hljs-attr">protocols:</span><br>      <span class="hljs-attr">grpc:</span><br>        <span class="hljs-attr">endpoint:</span> <span class="hljs-string">&quot;localhost:65535&quot;</span><br><br><span class="hljs-attr">exporters:</span><br>  <span class="hljs-attr">prometheus:</span><br>    <span class="hljs-attr">endpoint:</span> <span class="hljs-string">&quot;0.0.0.0:8889&quot;</span><br>  <span class="hljs-attr">zipkin:</span><br>    <span class="hljs-attr">endpoint:</span> <span class="hljs-string">&quot;http://localhost:9411/api/v2/spans&quot;</span><br>  <span class="hljs-attr">jaeger:</span><br>    <span class="hljs-attr">endpoint:</span> <span class="hljs-string">&quot;jaeger-collector:14250&quot;</span><br>    <span class="hljs-attr">tls:</span><br>      <span class="hljs-attr">insecure:</span> <span class="hljs-literal">true</span><br><br><span class="hljs-attr">processors:</span><br>  <span class="hljs-attr">batch:</span><br>  <span class="hljs-attr">spanmetrics:</span><br>    <span class="hljs-attr">metrics_exporter:</span> <span class="hljs-string">prometheus</span><br><br><span class="hljs-attr">service:</span><br>  <span class="hljs-attr">pipelines:</span><br>    <span class="hljs-attr">traces:</span><br>      <span class="hljs-attr">receivers:</span> [<span class="hljs-string">jaeger</span>, <span class="hljs-string">zipkin</span>]<br>      <span class="hljs-attr">processors:</span> [<span class="hljs-string">spanmetrics</span>, <span class="hljs-string">batch</span>]<br>      <span class="hljs-attr">exporters:</span> [<span class="hljs-string">jaeger</span>]<br>    <span class="hljs-comment"># The exporter name in this pipeline must match the spanmetrics.metrics_exporter name.</span><br>    <span class="hljs-comment"># The receiver is just a dummy and never used; added to pass validation requiring at least one receiver in a pipeline.</span><br>    <span class="hljs-attr">metrics/spanmetrics:</span><br>      <span class="hljs-attr">receivers:</span> [<span class="hljs-string">otlp/spanmetrics</span>]<br>      <span class="hljs-attr">exporters:</span> [<span class="hljs-string">prometheus</span>]<br></code></pre></td></tr></table></figure>
+
+<h2 id="对接prometheus"><a href="#对接prometheus" class="headerlink" title="对接prometheus"></a>对接prometheus</h2><p>应用发送trace到otel-collector以后，可在otel-collector的8889看到metrics，说明聚合统计已经生效：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs shell">curl http:/otel-collector:8889/metrics<br><span class="hljs-meta prompt_"># </span><span class="language-bash">HELP calls_total</span> <br><span class="hljs-meta prompt_"># </span><span class="language-bash">TYPE calls_total counter</span><br>calls_total&#123;operation=&quot;/callback&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;&#125; 1<br>calls_total&#123;operation=&quot;/checkjwtinredis&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;&#125; 840<br>calls_total&#123;operation=&quot;/getobjectlist&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;&#125; 74<br><span class="hljs-meta prompt_"># </span><span class="language-bash">HELP latency</span> <br><span class="hljs-meta prompt_"># </span><span class="language-bash">TYPE latency histogram</span><br>latency_bucket&#123;operation=&quot;/callback&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;,le=&quot;2&quot;&#125; 0<br>latency_bucket&#123;operation=&quot;/callback&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;,le=&quot;4&quot;&#125; 0<br>latency_bucket&#123;operation=&quot;/callback&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;,le=&quot;6&quot;&#125; 0<br>latency_sum&#123;operation=&quot;/callback&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;&#125; 192.146<br>latency_count&#123;operation=&quot;/callback&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;&#125; 1<br>latency_bucket&#123;operation=&quot;/checkjwtinredis&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;,le=&quot;2&quot;&#125; 816<br>latency_bucket&#123;operation=&quot;/checkjwtinredis&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;,le=&quot;4&quot;&#125; 832<br>latency_bucket&#123;operation=&quot;/checkjwtinredis&quot;,service_name=&quot;auth-http-server&quot;,span_kind=&quot;SPAN_KIND_SERVER&quot;,status_code=&quot;STATUS_CODE_UNSET&quot;,le=&quot;6&quot;&#125; 834<br></code></pre></td></tr></table></figure>
+
+<p>现在可在prometheus.yaml配置job：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment"># prometheus.yaml</span><br><span class="hljs-attr">scrape_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">aggregated-trace-metrics</span><br>    <span class="hljs-attr">static_configs:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">targets:</span> [<span class="hljs-string">&#x27;otel-exporter.jaeger-test.xxx.io&#x27;</span>]<br></code></pre></td></tr></table></figure>
+
+<p>otel-exporter.jaeger-test.xxx.io是我的K8S给otel-collector:8889配置的ingress地址<br>重新加载配置后，可在jaeger-ui的monitor页面查看<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fjaeger%2F7.png" srcset="/img/loading.gif" lazyload></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/" class="category-chain-item">云原生</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7/" class="category-chain-item">可观测性</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/cloud-native/" class="print-no-link">#cloud native</a>
+      
+        <a href="/tags/observability/" class="print-no-link">#observability</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</div>
+      <div>http://example.com/2023/04/04/cncf/monitor/jaeger/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>洪宇轩</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年4月4日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/05/05/cncf/monitor/go-zero-jaeger/" title="go-zero+opentelemetry+jaeger云原生链路跟踪实践">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">go-zero+opentelemetry+jaeger云原生链路跟踪实践</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/05/29/cncf/kubernetes/storage/rook-ceph/" title="K8S Rook Ceph StorageClass">
+                        <span class="hidden-mobile">K8S Rook Ceph StorageClass</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="busuanzi_container_site_pv" style="display: none">
+        总访问量 
+        <span id="busuanzi_value_site_pv"></span>
+         次
+      </span>
+    
+    
+      <span id="busuanzi_container_site_uv" style="display: none">
+        总访客数 
+        <span id="busuanzi_value_site_uv"></span>
+         人
+      </span>
+    
+    
+  
+</div>
+
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

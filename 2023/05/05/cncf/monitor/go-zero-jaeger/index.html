@@ -1,0 +1,1053 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#272727">
+  <meta name="author" content="洪宇轩">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="opentelemetry是一组可观测领域的标准和规范，基于这个标准提供的各种语言的SDK，通过在代码中打埋点的方式（侵入式），可实现市面上绝大多数语言的链路跟踪功能。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="go-zero+opentelemetry+jaeger云原生链路跟踪实践">
+<meta property="og:url" content="http://example.com/2023/05/05/cncf/monitor/go-zero-jaeger/index.html">
+<meta property="og:site_name" content="洪宇轩的博客">
+<meta property="og:description" content="opentelemetry是一组可观测领域的标准和规范，基于这个标准提供的各种语言的SDK，通过在代码中打埋点的方式（侵入式），可实现市面上绝大多数语言的链路跟踪功能。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2Fopentelemetry.png">
+<meta property="article:published_time" content="2023-05-05T04:46:16.000Z">
+<meta property="article:modified_time" content="2023-11-25T02:33:37.429Z">
+<meta property="article:author" content="洪宇轩">
+<meta property="article:tag" content="cloud native">
+<meta property="article:tag" content="observability">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2Fopentelemetry.png">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>go-zero+opentelemetry+jaeger云原生链路跟踪实践 - 洪宇轩的博客</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+  
+<link rel="stylesheet" href="/css/font_douyin/iconfont.css">
+<link rel="stylesheet" href="/css/font_xiaohongshu/iconfont.css">
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.5-a","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 60vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>洪宇轩的博客</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger_banner.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="go-zero+opentelemetry+jaeger云原生链路跟踪实践"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-author" aria-hidden="true"></i>
+        洪宇轩
+      </span>
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-05-05 12:46" pubdate>
+          2023年5月5日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          14k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          118 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar category-bar" style="margin-right: -1rem">
+    
+
+
+
+
+
+<div class="category-list">
+  
+  
+    
+    
+    
+    <div class="category row nomargin-x">
+      <a class="category-item 
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="云原生"
+        id="heading-03eadd6d06506d54fb81026b2f5963c8" role="tab" data-toggle="collapse" href="#collapse-03eadd6d06506d54fb81026b2f5963c8"
+        aria-expanded="true"
+      >
+        云原生
+        <span class="list-group-count">(10)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse show" id="collapse-03eadd6d06506d54fb81026b2f5963c8"
+           role="tabpanel" aria-labelledby="heading-03eadd6d06506d54fb81026b2f5963c8">
+        
+        
+          
+          
+  <div class="category-post-list">
+    
+    
+  </div>
+
+          
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="kubernetes"
+        id="heading-b76e98af9aaa680979bf5a65b2d5a105" role="tab" data-toggle="collapse" href="#collapse-b76e98af9aaa680979bf5a65b2d5a105"
+        aria-expanded="false"
+      >
+        kubernetes
+        <span class="list-group-count">(5)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-b76e98af9aaa680979bf5a65b2d5a105"
+           role="tabpanel" aria-labelledby="heading-b76e98af9aaa680979bf5a65b2d5a105">
+        
+        
+          
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/04/17/cncf/kubernetes/k8s_summary/" title="K8S系列文章之一：Kubernetes概览"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S系列文章之一：Kubernetes概览</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/04/17/cncf/kubernetes/kubeadm/" title="K8S系列文章之二：用kubeadm管理集群"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S系列文章之二：用kubeadm管理集群</span>
+        </a>
+      
+    
+  </div>
+
+          
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="kubernetes storage"
+        id="heading-92c18f6660d8584ff3ee6c0abde74673" role="tab" data-toggle="collapse" href="#collapse-92c18f6660d8584ff3ee6c0abde74673"
+        aria-expanded="false"
+      >
+        kubernetes storage
+        <span class="list-group-count">(3)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-92c18f6660d8584ff3ee6c0abde74673"
+           role="tabpanel" aria-labelledby="heading-92c18f6660d8584ff3ee6c0abde74673">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/hostpath/" title="K8S HostPath StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S HostPath StorageClass</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/nfs/" title="K8S NFS StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S NFS StorageClass</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/rook-ceph/" title="K8S Rook Ceph StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S Rook Ceph StorageClass</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+        
+      </div>
+    </div>
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem 
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="可观测性"
+        id="heading-06ec5192579bfd44ce6ddc96a2751203" role="tab" data-toggle="collapse" href="#collapse-06ec5192579bfd44ce6ddc96a2751203"
+        aria-expanded="true"
+      >
+        可观测性
+        <span class="list-group-count">(2)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse show" id="collapse-06ec5192579bfd44ce6ddc96a2751203"
+           role="tabpanel" aria-labelledby="heading-06ec5192579bfd44ce6ddc96a2751203">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2023/05/05/cncf/monitor/go-zero-jaeger/" title="go-zero+opentelemetry+jaeger云原生链路跟踪实践"
+           class="list-group-item list-group-item-action
+           active">
+          <span class="category-post">go-zero+opentelemetry+jaeger云原生链路跟踪实践</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2023/04/04/cncf/monitor/jaeger/" title="云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="微服务"
+        id="heading-79c287218d34050f6bd19986cd05b499" role="tab" data-toggle="collapse" href="#collapse-79c287218d34050f6bd19986cd05b499"
+        aria-expanded="false"
+      >
+        微服务
+        <span class="list-group-count">(3)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-79c287218d34050f6bd19986cd05b499"
+           role="tabpanel" aria-labelledby="heading-79c287218d34050f6bd19986cd05b499">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/03/06/cncf/microservice/istio1/" title="Istio系列文章之（一）基本原理介绍"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（一）基本原理介绍</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/03/08/cncf/microservice/istio3/" title="Istio系列文章之（三）功能快速入门"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（三）功能快速入门</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/03/07/cncf/microservice/istio2/" title="Istio系列文章之（二）安装部署"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（二）安装部署</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+        
+      </div>
+    </div>
+  
+</div>
+
+
+  </aside>
+
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">go-zero+opentelemetry+jaeger云原生链路跟踪实践</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>本文示例程序用到的组件和框架如下：</p>
+<ul>
+<li>jaeger：云原生可观测链路跟踪工具。关于jaeger部署详见链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</li>
+<li>go-zero：一个go语言版的集成了各种工程实践的api和rpc微服务框架，本文将使用go-zero的api框架</li>
+<li>imroc&#x2F;req：一个开源的go语言轻量级HTTP客户端库</li>
+<li>opentelemetry：提供了一组API和SDK来标准化遥测数据的采集和传输，相对于skywalking等字节码实现的非侵入式链路跟踪工具来说，opentelemetry是一组可观测领域的标准和规范，基于这个标准提供的各种语言的SDK，通过在代码中打埋点的方式（侵入式），可实现市面上绝大多数语言的链路跟踪功能（比如skywalking、听云等对ktor都不支持，但opentelemetry支持）</li>
+</ul>
+<h1 id="go-zero示例程序"><a href="#go-zero示例程序" class="headerlink" title="go-zero示例程序"></a>go-zero示例程序</h1><p>以一个封装了蓝鲸CMDB接口的示例工程为例（api工程），工程名叫bkcmdb，目录结构如下：<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F1.png" srcset="/img/loading.gif" lazyload></p>
+<p>蓝鲸CMDB提供了HTTP接口，示例工程通过imroc&#x2F;req库封装了蓝鲸CMDB接口，通过在调用蓝鲸接口的前后打入埋点，实现一次调用的链路跟踪功能。</p>
+<p>如下的一次调用，将会在一个链路（即trace）上产生两个节点（即span）：<br>postman –&gt; bkcmdb(go-zero) –&gt; 蓝鲸接口</p>
+<p>该链路第一个节点是bkcmdb，第二个节点是蓝鲸接口。默认go-zero是没有开启链路跟踪功能的，下文将说明如何启用。</p>
+<h1 id="go-zero启动链路跟踪功能"><a href="#go-zero启动链路跟踪功能" class="headerlink" title="go-zero启动链路跟踪功能"></a>go-zero启动链路跟踪功能</h1><p>在正式介绍opentrace基本概念之前，先通过简单的配置启动go-zero的链路跟踪功能看一看效果。go-zero自带了基于opentelemetry的链路追踪功能，默认未开启，在工程的配置文件etc&#x2F;bkcmdb.yaml中增加如下配置：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">Telemetry:</span><br>  <span class="hljs-attr">Name:</span> <span class="hljs-string">fiops-bkcmdb</span><br>  <span class="hljs-attr">Endpoint:</span> <span class="hljs-string">http://jaeger-collector.xxx.io/api/traces</span><br>  <span class="hljs-attr">Sampler:</span> <span class="hljs-number">1.0</span><br>  <span class="hljs-attr">Batcher:</span> <span class="hljs-string">jaeger</span><br></code></pre></td></tr></table></figure>
+<p>只需在配置文件中增加<code>Telemetry</code>配置块即可，无需修改任何代码。其中<code>Name</code>是该链路上的ServiceName，将会在jaeger（或zipkin）上显示为Service。Endpoint是链路跟踪工具（jaeger或zipkin）的collector地址。<code>Batcher</code>这里指定链路跟踪工具为jaeger。</p>
+<div class="note note-primary">
+            <p>注意：默认配置了Telemetry后，只能在链路中采集到客户端（比如postman）访问bkcmdb服务端这前半条链路，bkcmdb通过imroc&#x2F;req访问蓝鲸CMDB的后半条链路现在还采集不到。</p>
+          </div>
+
+<p>现在用postman访问bkcmdb</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs shell">curl --location &#x27;http://&lt;bkcmdb-url&gt;/v1/project/search&#x27; \<br>--header &#x27;Content-Type: application/json&#x27; \<br>--data &#x27;&#123;<br>    &quot;condition&quot;: &#123;<br>        &quot;project&quot;: [ ]<br>    &#125;,<br>    &quot;page&quot;: &#123;<br>        &quot;limit&quot;: 100,<br>        &quot;sort&quot;: &quot;-bk_inst_id&quot;,<br>        &quot;start&quot;: 0<br>    &#125;<br>&#125;&#x27;<br></code></pre></td></tr></table></figure>
+<p>打开jaeger前端页面，Service搜索fiops-bkcmdb，可以看到出现了一条链路，且链路中只有一个span，这个span就是客户端访问bkcmdb服务端的链路。<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F2.png" srcset="/img/loading.gif" lazyload></p>
+<p>点击这条链路进入详情页，展开trace，地址栏url红框内是traceId，右下角红框是spanId<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F3.png" srcset="/img/loading.gif" lazyload></p>
+<p>到此示例工程就算成功开启了链路跟踪功能，但这样还不能满足我们的需求，我们还需要bkcmdb访问蓝鲸CMDB的链路。在继续修改代码之前，我们先来了解一下opentracing、opentelemetry的基本概念。</p>
+<h1 id="OpenTracing"><a href="#OpenTracing" class="headerlink" title="OpenTracing"></a>OpenTracing</h1><blockquote>
+<p><a target="_blank" rel="noopener" href="https://opentracing.io/">https://opentracing.io/</a></p>
+</blockquote>
+<p>分布式追踪为描述和分析跨进程事务、甚至是跨网络调用提供了一种解决方案。早在 2005 年，Google 就在内部部署了一套分布式追踪系统 Dapper，并发表了一篇论文《Dapper, a Large-Scale Distributed Systems Tracing Infrastructure》，阐述了该分布式追踪系统的设计和实现，可以视为分布式追踪领域的鼻祖。后来各家厂商公司受此启发，纷纷开源了自家的链路跟踪产品，如zipkin、Uber的jaeger等。但各家的分布式追踪方案互不兼容，于是就诞生了<strong>OpenTracing</strong>。OpenTracing 是一个 Library，定义了一套通用的数据上报接口，要求各个分布式追踪系统都来实现这套接口。</p>
+<h2 id="数据模型"><a href="#数据模型" class="headerlink" title="数据模型"></a>数据模型</h2><p>OpenTracing规范中定义了数据模型，可参考原始文档The OpenTracing Semantic Specification</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs shell">Causal relationships between Spans in a single Trace<br> <br>         [Span A]  ←←←(the root span)<br>             |<br>      +------+------+<br>      |             |<br>  [Span B]      [Span C] ←←←(Span C is a `ChildOf` Span A)<br>      |             |<br>  [Span D]      +---+-------+<br>               |           |<br>           [Span E]    [Span F] &gt;&gt;&gt; [Span G] &gt;&gt;&gt; [Span H]<br>                                       ↑<br>                                       ↑<br>                                       ↑<br>                         (Span G `FollowsFrom` Span F)<br></code></pre></td></tr></table></figure>
+
+<p>在OpenTracing模型中有三个基本概念：</p>
+<ul>
+<li>Trace：调用链，一次HTTP调用或者一次RPC调用（从起始到最后终止），一个调用链会分配一个全局唯一的TraceID</li>
+<li>Span：每个调用链由多个Span组成。Span的含义是范围，可以理解为一个处理阶段（例如一次HTTP调用、一次数据库访问）。Span是一个分布式追踪的最小单位。Span和Span的关系称为Reference。下面是一个Span的结构。<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-keyword">type</span> Span <span class="hljs-keyword">struct</span> &#123;<br>  ctx           spanContext<br>  serviceName   <span class="hljs-type">string</span><br>  operationName <span class="hljs-type">string</span><br>  startTime     time.Time<br>  flag          <span class="hljs-type">string</span><br>  children      <span class="hljs-type">int</span><br>&#125;<br></code></pre></td></tr></table></figure>
+Span会封装一组零个或多个key:value的Tags，用于标识一些想在链路中展示的数据</li>
+<li>SpanContext：保存链路的上下文信息[TraceID,SpanID,或者是其它想要传递的内容]实现了tracer接口<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-keyword">type</span> spanContext <span class="hljs-keyword">struct</span> &#123;<br>  traceId <span class="hljs-type">string</span><br>  spanId  <span class="hljs-type">string</span><br>&#125;<br></code></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="Span之间的关系"><a href="#Span之间的关系" class="headerlink" title="Span之间的关系"></a>Span之间的关系</h2><ul>
+<li><p>ChildOf：两个Span可以组成父子关系</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs shell">[-Parent Span---------]<br>         [-Child Span----]<br><br>    [-Parent Span--------------]<br>         [-Child Span A----]<br>          [-Child Span B----]<br>        [-Child Span C----]<br>         [-Child Span D---------------]<br>         [-Child Span E----]<br></code></pre></td></tr></table></figure>
+</li>
+<li><p>FollowsFrom：某些父Span在任何方面都不依赖子Span的结果</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs shell">[-Parent Span-]  [-Child Span-]<br><br><br>    [-Parent Span--]<br>     [-Child Span-]<br><br><br>    [-Parent Span-]<br>                [-Child Span-]<br></code></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="OpenCensus"><a href="#OpenCensus" class="headerlink" title="OpenCensus"></a>OpenCensus</h2><blockquote>
+<p><a target="_blank" rel="noopener" href="https://opencensus.io/">https://opencensus.io/</a></p>
+</blockquote>
+<p>OpenCensus是Google开源的，作为最早提出Tracing概念的公司，OpenCensus也是Google Dapper的社区版本。相对于OpenTracing只支持tracing，OpenCensus不仅支持tracing还支持metrics。OpenTracing只制定规范，OpenCensus不仅制定规范，还包含了Agent和Collector。</p>
+<h1 id="OpenTelemetry"><a href="#OpenTelemetry" class="headerlink" title="OpenTelemetry"></a>OpenTelemetry</h1><blockquote>
+<p><a target="_blank" rel="noopener" href="https://opentelemetry.io/">https://opentelemetry.io/</a></p>
+</blockquote>
+<p>为了更好的将Tracing、Metrics、Logging融合在一起，OpenTelemetry 诞生了。作为 CNCF 的孵化项目，OpenTelemetry 由 OpenTracing 和 OpenCensus 项目合并而成，是一组规范、API 接口、SDK、工具和集成。为众多开发人员带来 Metrics、Tracing、Loging 的统一标准，三者都有相同的元数据结构，可以轻松实现互相关联。</p>
+<p>OpenTelemetry 与厂商、平台无关，不提供与可观测性相关的后端服务。可根据用户需求将可观测类数据导出到存储、查询、可视化等不同后端，如 Prometheus、Jaeger 、云厂商服务中。</p>
+<p>有了基本概念以后，下来看看如何使用imroc&#x2F;req在发送HTTP的时候加入tracing。</p>
+<h2 id="自定义imroc-req中间件实现发送HTTP的trace跟踪"><a href="#自定义imroc-req中间件实现发送HTTP的trace跟踪" class="headerlink" title="自定义imroc&#x2F;req中间件实现发送HTTP的trace跟踪"></a>自定义imroc&#x2F;req中间件实现发送HTTP的trace跟踪</h2><p>这里我们建一个HttpClient封装一下req。在svc目录下新建httpclient.go，并在里面新建一个结构体：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-keyword">type</span> HttpClient <span class="hljs-keyword">struct</span> &#123;<br>    *req.Client<br>&#125;<br></code></pre></td></tr></table></figure>
+<p>定义NewHttpClient函数用于返回一个实例化的HttpClient，在OnBeforeRequest里定义请求发送前的动作，在OnAfterResponse里定义请求返回后的动作。到此为止都是常规操作，还没涉及到任何tracing动作。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-comment">// 需要传入go-zero的Config对象</span><br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-title">NewHttpClient</span><span class="hljs-params">(conf config.Config)</span></span> *HttpClient &#123;<br>  headers := <span class="hljs-keyword">map</span>[<span class="hljs-type">string</span>]<span class="hljs-type">string</span>&#123;<br>    <span class="hljs-string">&quot;BK_USER&quot;</span>:                   <span class="hljs-string">&quot;admin&quot;</span>,<br>    <span class="hljs-string">&quot;HTTP_BLUEKING_SUPPLIER_ID&quot;</span>: <span class="hljs-string">&quot;0&quot;</span>,<br>  &#125;<br>  c := req.C().<br>    SetCommonHeaders(headers).SetBaseURL(fmt.Sprintf(<span class="hljs-string">&quot;http://%s&quot;</span>, conf.BkcmdbUrl)).<br>    OnBeforeRequest(<span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(client *req.Client, req *req.Request)</span></span> <span class="hljs-type">error</span> &#123;<br>      <span class="hljs-keyword">if</span> req.RetryAttempt &gt; <span class="hljs-number">0</span> &#123;<br>        <span class="hljs-keyword">return</span> <span class="hljs-literal">nil</span><br>      &#125;<br>      req.EnableDump()<br>      <span class="hljs-keyword">return</span> <span class="hljs-literal">nil</span><br>    &#125;).<br>    OnAfterResponse(<span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(client *req.Client, res *req.Response)</span></span> (err <span class="hljs-type">error</span>) &#123;<br>      responseCode := strconv.Itoa(res.StatusCode)<br>      <span class="hljs-keyword">if</span> !strings.HasPrefix(responseCode, <span class="hljs-string">&quot;2&quot;</span>) &amp;&amp; !strings.HasPrefix(responseCode, <span class="hljs-string">&quot;3&quot;</span>) &#123;<br>        <span class="hljs-keyword">defer</span> <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">()</span></span> &#123;<br>          <span class="hljs-keyword">if</span> e := <span class="hljs-built_in">recover</span>(); e != <span class="hljs-literal">nil</span> &#123;<br>            err = errorx.NewError(res.StatusCode, res.String(), <span class="hljs-literal">nil</span>)<br>          &#125;<br>        &#125;()<br>        ress := <span class="hljs-built_in">make</span>(<span class="hljs-keyword">map</span>[<span class="hljs-type">string</span>]<span class="hljs-keyword">interface</span>&#123;&#125;)<br>        res.UnmarshalJson(&amp;ress)<br>        err = errorx.NewError(res.StatusCode, ress[<span class="hljs-string">&quot;message&quot;</span>].(<span class="hljs-type">string</span>), ress[<span class="hljs-string">&quot;data&quot;</span>])<br>      &#125;<br>      <span class="hljs-keyword">if</span> res.Err != <span class="hljs-literal">nil</span> &#123;<br>        err = errorx.NewError(http.StatusInternalServerError, res.Err.Error(), <span class="hljs-literal">nil</span>)<br>      &#125;<br>      <span class="hljs-keyword">return</span><br>    &#125;)<br>  logx.Infof(<span class="hljs-string">&quot;init req client %s success&quot;</span>, c.BaseURL)<br>  <span class="hljs-keyword">return</span> &amp;HttpClient&#123;<br>    Client: c,<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+<p>接下来给结构体定义一个<code>SetTracer</code>方法用于设置tracing，这里用到了req的<code>WrapRoundTripFunc</code>用来给req自定义一个中间件，该中间件类似一个拦截器，可在请求发送前和响应后做一些集中处理的工作。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(c *HttpClient)</span></span> SetTracer(tracer trace.Tracer) &#123;<br>  c.WrapRoundTripFunc(<span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(rt req.RoundTripper)</span></span> req.RoundTripFunc &#123;<br>    <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(req *req.Request)</span></span> (resp *req.Response, err <span class="hljs-type">error</span>) &#123;<br>      <span class="hljs-comment">// Context().Value(key)可以从context中提取预先设定的值</span><br>      spanName, ok := req.Context().Value(<span class="hljs-string">&quot;SpanName&quot;</span>).(<span class="hljs-type">string</span>)<br>      <span class="hljs-keyword">if</span> !ok &#123;<br>        spanName = req.URL.Path <span class="hljs-comment">// 如果没有预先设定SpanName，就以请求url作为SpanName</span><br>      &#125;<br>      <span class="hljs-comment">// 最关键的一步，启动span，并传入上下文context(来自于*req.Request)，会返回一个加入了span的context和一个span对象</span><br>      _, span := tracer.Start(req.Context(), spanName) <br>      <span class="hljs-keyword">defer</span> span.End() <span class="hljs-comment">// 无论成功与否这里需要用End将span发射出去(发射到jaeger或zipkin)</span><br>      <span class="hljs-comment">// 下面给span添加一些tags</span><br>      span.SetAttributes(<br>        attribute.String(<span class="hljs-string">&quot;http.url&quot;</span>, req.URL.String()),<br>        attribute.String(<span class="hljs-string">&quot;http.method&quot;</span>, req.Method),<br>        attribute.String(<span class="hljs-string">&quot;http.request.header&quot;</span>, req.HeaderToString()),<br>      )<br>      <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(req.Body) &gt; <span class="hljs-number">0</span> &#123;<br>        span.SetAttributes(<br>          attribute.String(<span class="hljs-string">&quot;http.request.body&quot;</span>, <span class="hljs-type">string</span>(req.Body)),<br>        )<br>      &#125;<br>      <span class="hljs-comment">// 下面这句话将流程交还给req去执行发送请求动作</span><br>      resp, err = rt.RoundTrip(req)<br>      <span class="hljs-keyword">if</span> err != <span class="hljs-literal">nil</span> &#123; <span class="hljs-comment">// 失败了记录在span里</span><br>        span.RecordError(err)<br>        span.SetStatus(codes.Error, err.Error())<br>        <span class="hljs-keyword">return</span><br>      &#125;<br>      <span class="hljs-comment">// 添加一些响应tags</span><br>      span.SetAttributes(<br>        attribute.Int(<span class="hljs-string">&quot;http.status_code&quot;</span>, resp.StatusCode),<br>        attribute.String(<span class="hljs-string">&quot;http.response.header&quot;</span>, resp.HeaderToString()),<br>        attribute.String(<span class="hljs-string">&quot;http.response.body&quot;</span>, resp.String()),<br>      )<br>      <span class="hljs-keyword">return</span><br>    &#125;<br>  &#125;)<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>封装好了HttpClient，接下来把它放入servicecontext方便被调用，并在servicecontext中实例化它</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-keyword">type</span> ServiceContext <span class="hljs-keyword">struct</span> &#123;<br>  Config        config.Config<br>  Client_bkcmdb *HttpClient<br>&#125;<br> <br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-title">NewServiceContext</span><span class="hljs-params">(c config.Config)</span></span> *ServiceContext &#123;<br>  client := NewHttpClient(c) <span class="hljs-comment">// 实例化HttpClient</span><br>  client.SetTracer(otel.Tracer(<span class="hljs-string">&quot;imroc/req&quot;</span>)) <span class="hljs-comment">// 设置开启Trace，并用otel.Tracer(&quot;imroc/req&quot;)设置otel.library</span><br>  <span class="hljs-keyword">return</span> &amp;ServiceContext&#123;<br>    Config:        c,<br>    Client_bkcmdb: client,<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>接下来封装一个蓝鲸CMDB接口的结构体</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-keyword">type</span> BkcmdbUtil <span class="hljs-keyword">struct</span> &#123;<br>  logx.Logger<br>  ctx    context.Context<br>  svcCtx *ServiceContext<br>&#125;<br><br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-title">GetBkcmdbUtil</span><span class="hljs-params">(ctx context.Context, svcCtx *ServiceContext)</span></span> *BkcmdbUtil &#123;<br>  <span class="hljs-keyword">return</span> &amp;BkcmdbUtil&#123;<br>    Logger: logx.WithContext(ctx),<br>    ctx:    ctx,<br>    svcCtx: svcCtx,<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>然后以一个蓝鲸添加模型实例的接口为例</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(b *BkcmdbUtil)</span></span> AddInstance(tablename <span class="hljs-type">string</span>, v <span class="hljs-keyword">interface</span>&#123;&#125;) (resp *types.BkcmdbRes, err <span class="hljs-type">error</span>) &#123;<br>  <span class="hljs-comment">// 下面这句话的核心是.Do(context.WithValue(b.ctx, &quot;SpanName&quot;, &quot;AddInstance&quot;))</span><br>  <span class="hljs-comment">// 通过调用context.WithValue给ctx设置SpanName，然后就可以在前文定义的中间件中用req.Context().Value(&quot;SpanName&quot;).(string)把SpanName取出来了</span><br>  err = b.svcCtx.Client_bkcmdb.Post(fmt.Sprintf(<span class="hljs-string">&quot;/api/v3/create/instance/object/%s&quot;</span>, tablename)).SetBody(v).SetResult(&amp;resp).Do(context.WithValue(b.ctx, <span class="hljs-string">&quot;SpanName&quot;</span>, <span class="hljs-string">&quot;AddInstance&quot;</span>)).Err<br>  <span class="hljs-keyword">if</span> err != <span class="hljs-literal">nil</span> &#123;<br>    b.Logger.Error(err)<br>    <span class="hljs-keyword">return</span><br>  &#125;<br>  <span class="hljs-keyword">if</span> resp.Code != <span class="hljs-number">0</span> &#123;<br>    b.Logger.Errorf(<span class="hljs-string">&quot;add %s instance failed: %v&quot;</span>, tablename, resp.Message)<br>    <span class="hljs-comment">// errorx是自定义的错误处理类</span><br>    err = errorx.NewDefaultError(fmt.Sprintf(<span class="hljs-string">&quot;add %s instance failed: %v&quot;</span>, tablename, resp.Message))<br>  &#125;<br>  <span class="hljs-keyword">return</span> <span class="hljs-comment">// 返回值types.BkcmdbRes是自定义的返回结构体</span><br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>示例代码写到这就可以了，接下来再用postman发起一次调用，打开jaeger页面，会发现一个链路里现在出现了两个span，其中一个是postman访问go-zero接口的span，第二个就是go-zero通过req访问蓝鲸CMDB的span。<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F4.png" srcset="/img/loading.gif" lazyload><br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F5.png" srcset="/img/loading.gif" lazyload></p>
+<h2 id="其它通用操作的trace跟踪"><a href="#其它通用操作的trace跟踪" class="headerlink" title="其它通用操作的trace跟踪"></a>其它通用操作的trace跟踪</h2><p>有了如上示例，我们其实可以在任意操作前后打埋点（开启一个span），比如访问数据库、MongoDB、Redis、Elasticsearch、调用其它平台SDK（比如kubernetes client-go）等等，下来以Elasticsearch为例说明。</p>
+<p>封装一个<code>EsUtil</code>用来操作elasticsearch</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-keyword">type</span> EsUtil <span class="hljs-keyword">struct</span> &#123;<br>  logx.Logger<br>  ctx    context.Context<br>  svcCtx *ServiceContext<br>  tracer trace.Tracer<br>&#125;<br><br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-title">GetEsUtil</span><span class="hljs-params">(ctx context.Context, svcCtx *ServiceContext)</span></span> *EsUtil &#123;<br>  <span class="hljs-keyword">return</span> &amp;EsUtil&#123;<br>    Logger: logx.WithContext(ctx),<br>    ctx:    ctx,<br>    svcCtx: svcCtx,<br>    tracer: otel.Tracer(<span class="hljs-string">&quot;go-elasticsearch&quot;</span>),<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>在发起一个ES操作（例如插入一个文档）的前后打入埋点<code>startTracer</code>、<code>endTracer</code></p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(es *EsUtil)</span></span> EsIndex(index <span class="hljs-type">string</span>, body <span class="hljs-keyword">interface</span>&#123;&#125;, id <span class="hljs-type">string</span>, ctx context.Context) (*types.EsAddResponse, <span class="hljs-type">error</span>) &#123;<br>  b, _ := json.Marshal(body)<br>  es.Logger.Debugf(<span class="hljs-string">&quot;es index request=%v&quot;</span>, <span class="hljs-type">string</span>(b))<br>  span := es.newSpan(ctx, index) <span class="hljs-comment">// 创建一个span</span><br>  <span class="hljs-keyword">defer</span> span.End() <span class="hljs-comment">// 用End把span发射出去</span><br>  es.startTracer(index, id, <span class="hljs-string">&quot;index&quot;</span>, b, span, ctx) <span class="hljs-comment">// 请求前开启span</span><br>  res, err := es.svcCtx.Esclient.Index(<br>    index,<br>    bytes.NewReader(b),<br>    es.svcCtx.Esclient.Index.WithDocumentID(id),<br>    es.svcCtx.Esclient.Index.WithContext(ctx),<br>  )<br>  <span class="hljs-keyword">defer</span> res.Body.Close()<br>  <span class="hljs-keyword">if</span> err != <span class="hljs-literal">nil</span> &#123;<br>    <span class="hljs-keyword">return</span> <span class="hljs-literal">nil</span>, err<br>  &#125;<br>  <span class="hljs-keyword">if</span> res.IsError() &#123;<br>    err = errorx.NewDefaultError(fmt.Sprintf(<span class="hljs-string">&quot;[%s] error indexing document ID=%v&quot;</span>, res.Status(), id))<br>    es.endTracer(err, res.StatusCode, <span class="hljs-literal">nil</span>, span) <span class="hljs-comment">// 出错后结束span并写入错误信息</span><br>    <span class="hljs-keyword">return</span> <span class="hljs-literal">nil</span>, err<br>  &#125; <span class="hljs-keyword">else</span> &#123;<br>    <span class="hljs-keyword">var</span> r types.EsAddResponse <span class="hljs-comment">// 自定义了es返回结构体</span><br>    json.NewDecoder(res.Body).Decode(&amp;r)<br>    b, _ = json.Marshal(r)<br>    es.Logger.Debugf(<span class="hljs-string">&quot;es index response=%v&quot;</span>, <span class="hljs-type">string</span>(b))<br>    es.endTracer(<span class="hljs-literal">nil</span>, res.StatusCode, b, span) <span class="hljs-comment">// 正常返回结束span并写入返回值</span><br>    <span class="hljs-keyword">return</span> &amp;r, <span class="hljs-literal">nil</span><br>  &#125;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(es *EsUtil)</span></span> newSpan(ctx context.Context, name <span class="hljs-type">string</span>) (span trace.Span) &#123;<br>  spanName, ok := ctx.Value(<span class="hljs-string">&quot;SpanName&quot;</span>).(<span class="hljs-type">string</span>)<br>  <span class="hljs-keyword">if</span> !ok &#123;<br>      spanName = name<br>  &#125;<br>  _, span = es.tracer.Start(ctx, spanName)<br>  <span class="hljs-keyword">return</span><br>&#125;<br><br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(es *EsUtil)</span></span> startTracer(index, id, action <span class="hljs-type">string</span>, body []<span class="hljs-type">byte</span>, span trace.Span, ctx context.Context) &#123;<br>  span.SetAttributes(<br>    attribute.String(<span class="hljs-string">&quot;elastic._index&quot;</span>, index),<br>    attribute.String(<span class="hljs-string">&quot;elastic._id&quot;</span>, id),<br>    attribute.String(<span class="hljs-string">&quot;elastic.action&quot;</span>, action),<br>    attribute.String(<span class="hljs-string">&quot;elastic.client.version&quot;</span>, elasticsearch.Version),<br>  )<br>  <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(body) &gt; <span class="hljs-number">0</span> &#123;<br>    span.SetAttributes(<br>        attribute.String(<span class="hljs-string">&quot;elastic.request.body&quot;</span>, <span class="hljs-type">string</span>(body)),<br>    )<br>  &#125;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(es *EsUtil)</span></span> endTracer(err <span class="hljs-type">error</span>, status_code <span class="hljs-type">int</span>, body []<span class="hljs-type">byte</span>, span trace.Span) &#123;<br>  <span class="hljs-keyword">if</span> err != <span class="hljs-literal">nil</span> &#123;<br>    span.RecordError(err)<br>    span.SetStatus(codes.Error, err.Error())<br>    <span class="hljs-keyword">return</span><br>  &#125;<br>  span.SetAttributes(<br>    attribute.Int(<span class="hljs-string">&quot;elastic.status&quot;</span>, status_code),<br>    attribute.String(<span class="hljs-string">&quot;elastic.response.body&quot;</span>, <span class="hljs-type">string</span>(body)),<br>  )<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>到此，从go-zero的服务A接收到一个请求，到由当前服务A发送出去的第一跳操作（HTTP、Elasticsearch、数据库等）都可以在jaerger里看到trace了，大概长这样：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs shell">microserviceA<br>  |<br>  |--&gt; HTTP(蓝鲸CMDB)<br>  |--&gt; Elasticsearch<br>  |--&gt; PostgreSQL<br>  |--&gt; HTTP(蓝鲸CMDB)<br>  |--&gt; HTTP(蓝鲸CMDB)<br>  | ……<br></code></pre></td></tr></table></figure>
+
+<p>此时我们发现，跨服务（A服务调用B服务）现在还是没有链路，单独看服务A的链路也有，服务B的链路也有，但AB没连起来。原因在于我们在链路传递参数的过程中，并没有把traceId、spanId传递到下一跳。自然下一跳和上一跳就没法连接起来了。</p>
+<p>改造代码之前还是先看原理。</p>
+<h2 id="Opentelemetry链路传递核心原理"><a href="#Opentelemetry链路传递核心原理" class="headerlink" title="Opentelemetry链路传递核心原理"></a>Opentelemetry链路传递核心原理</h2><p>先看一张在HTTP通信下，trace如何进行链路传递参数<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F6.jpg" srcset="/img/loading.gif" lazyload></p>
+<p>链路传递数据时用到一个载体叫做propagators，什么是 Propagator？OpenTelemetry 是这样定义的</p>
+<div class="note note-primary">
+            <p>Cross-cutting concerns send their state to the next process using Propagators, which are defined as objects used to read and write context data to and from messages exchanged by the applications.</p>
+          </div>
+
+<p>大概意思就是：从系统的横向切入面看，通过定义一个可读可写的context对象，在应用间进行状态的传递。<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2Fopentelemetry.png" srcset="/img/loading.gif" lazyload></p>
+<p>这里还有一个Baggage的概念，但是本文暂未涉及到，因此不再赘述，示例代码只需要propagator就可以满足需求了</p>
+<h2 id="Propagator注入trace实现链路信息传递"><a href="#Propagator注入trace实现链路信息传递" class="headerlink" title="Propagator注入trace实现链路信息传递"></a>Propagator注入trace实现链路信息传递</h2><p>服务A通过imroc&#x2F;req调用服务B（HTTP调用），需要在服务A端HTTP发起之前给propagator注入载体(carrier)，并写入HTTP headers，如下代码</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(c *HttpClient)</span></span> roundTripFunc(rt req.RoundTripper) req.RoundTripFunc &#123;<br>  <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(req *req.Request)</span></span> (resp *req.Response, err <span class="hljs-type">error</span>) &#123;<br>    <span class="hljs-comment">// 省略……</span><br>    spanCtx, span := c.Tracer.Start(req.Context(), spanName) <span class="hljs-comment">// 拿到关键的spanCtx</span><br>    <span class="hljs-keyword">defer</span> span.End()<br>    <span class="hljs-comment">// 最关键的一句话，把spanCtx里的trace信息inject到载体propagation.HeaderCarrier里，并通过HTTP headers传输</span><br>    otel.GetTextMapPropagator().Inject(spanCtx, propagation.HeaderCarrier(req.Headers))<br>    span.SetAttributes(<br>      <span class="hljs-comment">// 省略……</span><br>    )<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>然后在服务B端，从HTTP headers中提取trace信息到载体(<code>carrier</code>)，并放入<code>context</code>里，这样就完成了应用之间的链路传递。这部分功能go-zero已经默认实现了，当开启了<code>Telemetry</code>后，go-zero会通过内置的trace中间件从载体中提取trace信息，这部分源码如下（<a target="_blank" rel="noopener" href="https://github.com/zeromicro/go-zero/blob/v1.5.2/rest/handler/tracehandler.go%EF%BC%89%EF%BC%9A">https://github.com/zeromicro/go-zero/blob/v1.5.2/rest/handler/tracehandler.go）：</a></p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><code class="hljs go"><span class="hljs-comment">// TraceHandler return a middleware that process the opentelemetry.</span><br><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-title">TraceHandler</span><span class="hljs-params">(serviceName, path <span class="hljs-type">string</span>, opts ...TraceOption)</span></span> <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(http.Handler)</span></span> http.Handler &#123;<br>  <span class="hljs-keyword">var</span> options traceOptions<br>  <span class="hljs-keyword">for</span> _, opt := <span class="hljs-keyword">range</span> opts &#123;<br>    opt(&amp;options)<br>  &#125;<br><br>  ignorePaths := collection.NewSet()<br>  ignorePaths.AddStr(options.traceIgnorePaths...)<br><br>  <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(next http.Handler)</span></span> http.Handler &#123;<br>    tracer := otel.Tracer(trace.TraceName)<br>    propagator := otel.GetTextMapPropagator()<br><br>    <span class="hljs-keyword">return</span> http.HandlerFunc(<span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(w http.ResponseWriter, r *http.Request)</span></span> &#123;<br>      spanName := path<br>      <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(spanName) == <span class="hljs-number">0</span> &#123;<br>        spanName = r.URL.Path<br>      &#125;<br><br>      <span class="hljs-keyword">if</span> ignorePaths.Contains(spanName) &#123;<br>        next.ServeHTTP(w, r)<br>        <span class="hljs-keyword">return</span><br>      &#125;<br><br>      ctx := propagator.Extract(r.Context(), propagation.HeaderCarrier(r.Header))<br>      spanCtx, span := tracer.Start(<br>        ctx,<br>        spanName,<br>        oteltrace.WithSpanKind(oteltrace.SpanKindServer),<br>        oteltrace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(<br>            serviceName, spanName, r)...),<br>      )<br>      <span class="hljs-keyword">defer</span> span.End()<br><br>      <span class="hljs-comment">// convenient for tracking error messages</span><br>      propagator.Inject(spanCtx, propagation.HeaderCarrier(w.Header()))<br><br>      trw := &amp;response.WithCodeResponseWriter&#123;Writer: w, Code: http.StatusOK&#125;<br>      next.ServeHTTP(trw, r.WithContext(spanCtx))<br><br>      span.SetAttributes(semconv.HTTPAttributesFromHTTPStatusCode(trw.Code)...)<br>      span.SetStatus(semconv.SpanStatusFromHTTPStatusCodeAndSpanKind(<br>        trw.Code, oteltrace.SpanKindServer))<br>    &#125;)<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>现在打开jaeger页面，可以看到两个服务之间的链路已经连起来了<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F7.jpg" srcset="/img/loading.gif" lazyload></p>
+<p>展开GetProjects，可以看到注入的header长这样<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fmonitor%2Fgozerojaeger%2F8.png" srcset="/img/loading.gif" lazyload></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/" class="category-chain-item">云原生</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7/" class="category-chain-item">可观测性</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/cloud-native/" class="print-no-link">#cloud native</a>
+      
+        <a href="/tags/observability/" class="print-no-link">#observability</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>go-zero+opentelemetry+jaeger云原生链路跟踪实践</div>
+      <div>http://example.com/2023/05/05/cncf/monitor/go-zero-jaeger/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>洪宇轩</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年5月5日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/10/05/travel/gannan/gnanan/" title="国庆甘南小环线四天三晚包车游">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">国庆甘南小环线四天三晚包车游</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/04/04/cncf/monitor/jaeger/" title="云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解">
+                        <span class="hidden-mobile">云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="busuanzi_container_site_pv" style="display: none">
+        总访问量 
+        <span id="busuanzi_value_site_pv"></span>
+         次
+      </span>
+    
+    
+      <span id="busuanzi_container_site_uv" style="display: none">
+        总访客数 
+        <span id="busuanzi_value_site_uv"></span>
+         人
+      </span>
+    
+    
+  
+</div>
+
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

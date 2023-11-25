@@ -1,0 +1,1017 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#272727">
+  <meta name="author" content="洪宇轩">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Ceph是红帽家的分布式块存储。Rook可提供基于Ceph的云原生存储。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="K8S Rook Ceph StorageClass">
+<meta property="og:url" content="http://example.com/2022/05/29/cncf/kubernetes/storage/rook-ceph/index.html">
+<meta property="og:site_name" content="洪宇轩的博客">
+<meta property="og:description" content="Ceph是红帽家的分布式块存储。Rook可提供基于Ceph的云原生存储。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fk8s%2Fstorage%2Fwhat_is_rook.png">
+<meta property="article:published_time" content="2022-05-29T10:14:40.000Z">
+<meta property="article:modified_time" content="2023-11-25T02:33:37.428Z">
+<meta property="article:author" content="洪宇轩">
+<meta property="article:tag" content="cloud native">
+<meta property="article:tag" content="kubernetes">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fk8s%2Fstorage%2Fwhat_is_rook.png">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>K8S Rook Ceph StorageClass - 洪宇轩的博客</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+  
+<link rel="stylesheet" href="/css/font_douyin/iconfont.css">
+<link rel="stylesheet" href="/css/font_xiaohongshu/iconfont.css">
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.5-a","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 60vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>洪宇轩的博客</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fk8s%2Fstorage%2Fk8s_storage.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="K8S Rook Ceph StorageClass"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-author" aria-hidden="true"></i>
+        洪宇轩
+      </span>
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-05-29 18:14" pubdate>
+          2022年5月29日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          6.4k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          54 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar category-bar" style="margin-right: -1rem">
+    
+
+
+
+
+
+<div class="category-list">
+  
+  
+    
+    
+    
+    <div class="category row nomargin-x">
+      <a class="category-item 
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="云原生"
+        id="heading-03eadd6d06506d54fb81026b2f5963c8" role="tab" data-toggle="collapse" href="#collapse-03eadd6d06506d54fb81026b2f5963c8"
+        aria-expanded="true"
+      >
+        云原生
+        <span class="list-group-count">(10)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse show" id="collapse-03eadd6d06506d54fb81026b2f5963c8"
+           role="tabpanel" aria-labelledby="heading-03eadd6d06506d54fb81026b2f5963c8">
+        
+        
+          
+          
+  <div class="category-post-list">
+    
+    
+  </div>
+
+          
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem 
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="kubernetes"
+        id="heading-b76e98af9aaa680979bf5a65b2d5a105" role="tab" data-toggle="collapse" href="#collapse-b76e98af9aaa680979bf5a65b2d5a105"
+        aria-expanded="true"
+      >
+        kubernetes
+        <span class="list-group-count">(5)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse show" id="collapse-b76e98af9aaa680979bf5a65b2d5a105"
+           role="tabpanel" aria-labelledby="heading-b76e98af9aaa680979bf5a65b2d5a105">
+        
+        
+          
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/04/17/cncf/kubernetes/k8s_summary/" title="K8S系列文章之一：Kubernetes概览"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S系列文章之一：Kubernetes概览</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/04/17/cncf/kubernetes/kubeadm/" title="K8S系列文章之二：用kubeadm管理集群"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S系列文章之二：用kubeadm管理集群</span>
+        </a>
+      
+    
+  </div>
+
+          
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem 
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="kubernetes storage"
+        id="heading-92c18f6660d8584ff3ee6c0abde74673" role="tab" data-toggle="collapse" href="#collapse-92c18f6660d8584ff3ee6c0abde74673"
+        aria-expanded="true"
+      >
+        kubernetes storage
+        <span class="list-group-count">(3)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse show" id="collapse-92c18f6660d8584ff3ee6c0abde74673"
+           role="tabpanel" aria-labelledby="heading-92c18f6660d8584ff3ee6c0abde74673">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/hostpath/" title="K8S HostPath StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S HostPath StorageClass</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/nfs/" title="K8S NFS StorageClass"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">K8S NFS StorageClass</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/05/29/cncf/kubernetes/storage/rook-ceph/" title="K8S Rook Ceph StorageClass"
+           class="list-group-item list-group-item-action
+           active">
+          <span class="category-post">K8S Rook Ceph StorageClass</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+        
+      </div>
+    </div>
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="可观测性"
+        id="heading-06ec5192579bfd44ce6ddc96a2751203" role="tab" data-toggle="collapse" href="#collapse-06ec5192579bfd44ce6ddc96a2751203"
+        aria-expanded="false"
+      >
+        可观测性
+        <span class="list-group-count">(2)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-06ec5192579bfd44ce6ddc96a2751203"
+           role="tabpanel" aria-labelledby="heading-06ec5192579bfd44ce6ddc96a2751203">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2023/05/05/cncf/monitor/go-zero-jaeger/" title="go-zero+opentelemetry+jaeger云原生链路跟踪实践"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">go-zero+opentelemetry+jaeger云原生链路跟踪实践</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2023/04/04/cncf/monitor/jaeger/" title="云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+    
+    
+    
+    <div class="category-sub row nomargin-x">
+      <a class="category-subitem collapsed
+          list-group-item category-item-action col-10 col-md-11 col-xm-11" title="微服务"
+        id="heading-79c287218d34050f6bd19986cd05b499" role="tab" data-toggle="collapse" href="#collapse-79c287218d34050f6bd19986cd05b499"
+        aria-expanded="false"
+      >
+        微服务
+        <span class="list-group-count">(3)</span>
+        <i class="iconfont icon-arrowright"></i>
+      </a>
+      
+      <div class="category-collapse collapse " id="collapse-79c287218d34050f6bd19986cd05b499"
+           role="tabpanel" aria-labelledby="heading-79c287218d34050f6bd19986cd05b499">
+        
+        
+          
+  <div class="category-post-list">
+    
+    
+      
+      
+        <a href="/2022/03/06/cncf/microservice/istio1/" title="Istio系列文章之（一）基本原理介绍"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（一）基本原理介绍</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/03/08/cncf/microservice/istio3/" title="Istio系列文章之（三）功能快速入门"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（三）功能快速入门</span>
+        </a>
+      
+    
+      
+      
+        <a href="/2022/03/07/cncf/microservice/istio2/" title="Istio系列文章之（二）安装部署"
+           class="list-group-item list-group-item-action
+           ">
+          <span class="category-post">Istio系列文章之（二）安装部署</span>
+        </a>
+      
+    
+  </div>
+
+        
+      </div>
+    </div>
+  
+        
+      </div>
+    </div>
+  
+</div>
+
+
+  </aside>
+
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">K8S Rook Ceph StorageClass</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p><a target="_blank" rel="noopener" href="https://rook.io/">https://rook.io/</a></p>
+</blockquote>
+<h1 id="什么是Rook"><a href="#什么是Rook" class="headerlink" title="什么是Rook"></a>什么是Rook</h1><p><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fk8s%2Fstorage%2Frook-home.png" srcset="/img/loading.gif" lazyload><br>Rook是CNCF已经毕业的云原生存储方案<br><img src="https://blog-1255547500.cos.ap-beijing.myqcloud.com/images%2Fcncf%2Fk8s%2Fstorage%2Fwhat_is_rook.png" srcset="/img/loading.gif" lazyload></p>
+<h1 id="前置条件"><a href="#前置条件" class="headerlink" title="前置条件"></a>前置条件</h1><p>Rook Ceph将每个k8s节点上的块存储联合成一体作为分布式存储，为k8s提供StorageClass，这样的k8s节点由于同时提供了计算、网络、存储，因此也被称作为超融合节点。<br>为了使用Rook Ceph，k8s集群必须满足的条件有：</p>
+<ul>
+<li>至少三个node</li>
+<li>节点提供块存储，满足下列条件之一<ul>
+<li>Raw devices (no partitions or formatted filesystems)</li>
+<li>Raw partitions (no formatted filesystem)</li>
+<li>PVs available from a storage class in block mode</li>
+</ul>
+</li>
+</ul>
+<p>我们选择第一个方式提供Raw devices，为每个节点添加一块盘sdb，不对该盘做任何分区操作，也不格式化文件系统：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs shell">lsblk -f<br>NAME                      FSTYPE      LABEL UUID                                   FSAVAIL FSUSE% MOUNTPOINT                                                      0   100% /snap/snapd/15904<br>sda<br>├─sda1<br>├─sda2                    ext4              00c05ca1-7dd5-41d1-8ae6-c7deb56cde25    800.9M    11% /boot<br>└─sda3                    LVM2_member       1NgIKw-CZDb-6t8t-cIMZ-iHYa-jACV-MQIYnR<br>  └─ubuntu--vg-ubuntu--lv ext4              6686cd41-a6f4-45a7-a564-5581507cd252     10.7G    34% /<br>sdb<br></code></pre></td></tr></table></figure>
+
+<p>用lsblk看sdb没有FSTYPE</p>
+<h1 id="部署Rook-Operator"><a href="#部署Rook-Operator" class="headerlink" title="部署Rook Operator"></a>部署Rook Operator</h1><p>下载资源文件，并部署</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs shell">git clone --single-branch --branch v1.9.4 https://github.com/rook/rook.git<br>cd rook/deploy/examples<br>kubectl create -f crds.yaml -f common.yaml -f operator.yaml<br>kubectl get pods -n rook-ceph<br>rook-ceph-operator-799cd7d684-fzwxb                               1/1     Running     0              18h<br></code></pre></td></tr></table></figure>
+
+<h1 id="部署Rook-Ceph-Cluster"><a href="#部署Rook-Ceph-Cluster" class="headerlink" title="部署Rook Ceph Cluster"></a>部署Rook Ceph Cluster</h1><p>编辑cluster.yaml，修改spec.storage.deviceFilter，改为sdb。deviceFilter还可以写正则表达式，详见：<a target="_blank" rel="noopener" href="https://rook.io/docs/rook/v1.9/CRDs/ceph-cluster-crd/?h=devicefilter#storage-selection-settings">https://rook.io/docs/rook/v1.9/CRDs/ceph-cluster-crd/?h=devicefilter#storage-selection-settings</a></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">……</span>  <br>  <span class="hljs-attr">storage:</span> <span class="hljs-comment"># cluster level storage configuration and selection</span><br>    <span class="hljs-attr">useAllNodes:</span> <span class="hljs-literal">true</span><br>    <span class="hljs-attr">useAllDevices:</span> <span class="hljs-literal">true</span><br>    <span class="hljs-attr">deviceFilter:</span> <span class="hljs-string">sdb</span><br></code></pre></td></tr></table></figure>
+
+<p>接下来部署cluster</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs shell">cd rook/deploy/examples<br>kubectl apply -f cluster.yaml<br></code></pre></td></tr></table></figure>
+
+<p>查看pod是否运行。注意下面很多镜像都是从k8s.gcr.io下载的，需要翻墙</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs shell">kubectl get pods -n rook-ceph<br>NAME                                                              READY   STATUS      RESTARTS         AGE<br>csi-cephfsplugin-jhtt7                                            3/3     Running     3 (21h ago)      21h<br>csi-cephfsplugin-p4chb                                            3/3     Running     4 (26h ago)      4d20h<br>csi-cephfsplugin-provisioner-7577bb4d59-dmv7m                     6/6     Running     9 (63m ago)      19h<br>csi-cephfsplugin-provisioner-7577bb4d59-gr8qk                     6/6     Running     13 (4h10m ago)   19h<br>csi-cephfsplugin-txhqp                                            3/3     Running     2 (25h ago)      4d20h<br>csi-rbdplugin-5z5nd                                               3/3     Running     3 (21h ago)      21h<br>csi-rbdplugin-cqnr7                                               3/3     Running     4 (25h ago)      4d20h<br>csi-rbdplugin-provisioner-847b498845-bxswz                        6/6     Running     9 (63m ago)      19h<br>csi-rbdplugin-provisioner-847b498845-vfplt                        6/6     Running     14 (4h10m ago)   19h<br>csi-rbdplugin-s6nlj                                               3/3     Running     2 (26h ago)      4d20h<br>rook-ceph-crashcollector-k8s-node1.lab.example.com-8b77cffwnjgt   1/1     Running     0                4h11m<br>rook-ceph-crashcollector-k8s-node2.lab.example.com-9d755bdddmcc   1/1     Running     0                19h<br>rook-ceph-crashcollector-k8s-node3.lab.example.com-6dbb64b65s5t   1/1     Running     0                4h13m<br>rook-ceph-mgr-a-78cd6b9ffb-j8r9w                                  2/2     Running     4 (63m ago)      4h13m<br>rook-ceph-mgr-b-79476687d8-9hfft                                  2/2     Running     43 (26m ago)     19h<br>rook-ceph-mon-a-c7c674d76-znxzx                                   1/1     Running     48 (26m ago)     19h<br>rook-ceph-mon-b-5df5487d9f-z7rnb                                  1/1     Running     4 (63m ago)      4h15m<br>rook-ceph-mon-c-6d8968ff95-h2vqp                                  1/1     Running     8 (30m ago)      19h<br>rook-ceph-operator-799cd7d684-fzwxb                               1/1     Running     0                19h<br>rook-ceph-osd-0-5dc6988c7b-l69vx                                  1/1     Running     8 (30m ago)      19h<br>rook-ceph-osd-1-5777f4dc9d-cl48b                                  1/1     Running     43 (26m ago)     19h<br>rook-ceph-osd-2-75688c47d-nfbqx                                   1/1     Running     5 (30m ago)      4h15m<br>rook-ceph-osd-prepare-k8s-node1.lab.example.com-5j4b2             0/1     Completed   0                166m<br>rook-ceph-osd-prepare-k8s-node2.lab.example.com-sz5b8             0/1     Completed   0                166m<br>rook-ceph-osd-prepare-k8s-node3.lab.example.com-645cq             0/1     Completed   0                166<br></code></pre></td></tr></table></figure>
+<div class="note note-primary">
+            <p>If the rook-ceph-mon, rook-ceph-mgr, or rook-ceph-osd pods are not created, please refer to the Ceph common issues for more details and potential solutions.</p>
+          </div>
+
+<p>再部署一个toolbox（里面有ceph命令）用于查看ceph状态：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs shell">kubectl apply -f toolbox.yaml<br>kubectl exec -it rook-ceph-tools-55587cd5f9-mvnhw -n rook-ceph -- bash<br>[rook@rook-ceph-tools-55587cd5f9-mvnhw /]$ ceph status<br></code></pre></td></tr></table></figure>
+<div class="note note-primary">
+            <p>If the cluster is not healthy, please refer to the Ceph common issues for more details and potential solutions.</p>
+          </div>
+
+<p>Ceph还提供了一个dashboard：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs shell">kubectl expose deployment rook-ceph-mgr-a -n rook-ceph --type=NodePort --name ceph-dashboard<br>kubectl get svc -n rook-ceph<br>NAME                       TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE<br>ceph-dashboard             NodePort    10.98.127.28     &lt;none&gt;        6800:30682/TCP,9283:31582/TCP,8443:32441/TCP   21h<br><br>kubectl exec -it rook-ceph-tools-55587cd5f9-dp9z2 -n rook-ceph -- bash<br>[rook@rook-ceph-tools-55587cd5f9-dp9z2 /]$ ceph status<br>  cluster:<br>    id:     43a7f46e-58d0-4b09-9c69-d150b716d499<br>    health: HEALTH_WARN<br>            3 daemons have recently crashed<br><br>  services:<br>    mon: 3 daemons, quorum a,b,c (age 31m)<br>    mgr: a(active, since 36m), standbys: b<br>    mds: 1/1 daemons up, 1 hot standby<br>    osd: 3 osds: 3 up (since 31m), 3 in (since 20h)<br><br>  data:<br>    volumes: 1/1 healthy<br>    pools:   3 pools, 65 pgs<br>    objects: 27 objects, 429 KiB<br>    usage:   86 MiB used, 30 GiB / 30 GiB avail<br>    pgs:     65 active+clean<br><br>  io:<br>    client:   851 B/s rd, 1 op/s rd, 0 op/s wr<br></code></pre></td></tr></table></figure>
+
+<p>访问https:&#x2F;&#x2F;节点IP:32441<br>至此Ceph Cluster部署完毕<br>Ceph可提供三种存储方式：</p>
+<ul>
+<li>Block: Create block storage to be consumed by a pod (RWO)</li>
+<li>Shared Filesystem: Create a filesystem to be shared across multiple pods (RWX)</li>
+<li>Object: Create an object store that is accessible inside or outside the Kubernetes cluster</li>
+</ul>
+<p>我们使用shared filesystem提供RWX模式</p>
+<h1 id="创建Filesystem"><a href="#创建Filesystem" class="headerlink" title="创建Filesystem"></a>创建Filesystem</h1><p>filesystem.yaml</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">ceph.rook.io/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">CephFilesystem</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">myfs</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">rook-ceph</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">metadataPool:</span><br>    <span class="hljs-attr">replicated:</span><br>      <span class="hljs-attr">size:</span> <span class="hljs-number">3</span><br>  <span class="hljs-attr">dataPools:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">replicated</span><br>      <span class="hljs-attr">replicated:</span><br>        <span class="hljs-attr">size:</span> <span class="hljs-number">3</span><br>  <span class="hljs-attr">preserveFilesystemOnDelete:</span> <span class="hljs-literal">true</span><br>  <span class="hljs-attr">metadataServer:</span><br>    <span class="hljs-attr">activeCount:</span> <span class="hljs-number">1</span><br>    <span class="hljs-attr">activeStandby:</span> <span class="hljs-literal">true</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs shell">kubectl apply -f filesystem.yaml<br>kubectl get pods -n rook-ceph -l app=rook-ceph-mds<br>NAME                                    READY   STATUS    RESTARTS   AGE<br>rook-ceph-mds-myfs-a-9f6f85968-ljr8f    1/1     Running   0          80m<br>rook-ceph-mds-myfs-b-595fbc5858-jm5wz   1/1     Running   0          79m<br></code></pre></td></tr></table></figure>
+
+<h1 id="提供StorageClass"><a href="#提供StorageClass" class="headerlink" title="提供StorageClass"></a>提供StorageClass</h1><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">storage.k8s.io/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">StorageClass</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">rook-cephfs</span><br><span class="hljs-comment"># Change &quot;rook-ceph&quot; provisioner prefix to match the operator namespace if needed</span><br><span class="hljs-attr">provisioner:</span> <span class="hljs-string">rook-ceph.cephfs.csi.ceph.com</span><br><span class="hljs-attr">parameters:</span><br>  <span class="hljs-comment"># clusterID is the namespace where the rook cluster is running</span><br>  <span class="hljs-comment"># If you change this namespace, also change the namespace below where the secret namespaces are defined</span><br>  <span class="hljs-attr">clusterID:</span> <span class="hljs-string">rook-ceph</span><br><br>  <span class="hljs-comment"># CephFS filesystem name into which the volume shall be created</span><br>  <span class="hljs-attr">fsName:</span> <span class="hljs-string">myfs</span><br><br>  <span class="hljs-comment"># Ceph pool into which the volume shall be created</span><br>  <span class="hljs-comment"># Required for provisionVolume: &quot;true&quot;</span><br>  <span class="hljs-attr">pool:</span> <span class="hljs-string">myfs-replicated</span><br><br>  <span class="hljs-comment"># The secrets contain Ceph admin credentials. These are generated automatically by the operator</span><br>  <span class="hljs-comment"># in the same namespace as the cluster.</span><br>  <span class="hljs-attr">csi.storage.k8s.io/provisioner-secret-name:</span> <span class="hljs-string">rook-csi-cephfs-provisioner</span><br>  <span class="hljs-attr">csi.storage.k8s.io/provisioner-secret-namespace:</span> <span class="hljs-string">rook-ceph</span><br>  <span class="hljs-attr">csi.storage.k8s.io/controller-expand-secret-name:</span> <span class="hljs-string">rook-csi-cephfs-provisioner</span><br>  <span class="hljs-attr">csi.storage.k8s.io/controller-expand-secret-namespace:</span> <span class="hljs-string">rook-ceph</span><br>  <span class="hljs-attr">csi.storage.k8s.io/node-stage-secret-name:</span> <span class="hljs-string">rook-csi-cephfs-node</span><br>  <span class="hljs-attr">csi.storage.k8s.io/node-stage-secret-namespace:</span> <span class="hljs-string">rook-ceph</span><br><br><span class="hljs-attr">reclaimPolicy:</span> <span class="hljs-string">Delete</span><br></code></pre></td></tr></table></figure>
+<p>provisioner名称：rook-ceph.cephfs.csi.ceph.com，其中rook-ceph是cluster运行所在namespace</p>
+<h1 id="创建PVC"><a href="#创建PVC" class="headerlink" title="创建PVC"></a>创建PVC</h1><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">PersistentVolumeClaim</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">cephfs-fox-dev</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">accessModes:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">ReadWriteMany</span><br>  <span class="hljs-attr">resources:</span><br>    <span class="hljs-attr">requests:</span><br>      <span class="hljs-attr">storage:</span> <span class="hljs-string">5Gi</span><br>  <span class="hljs-attr">storageClassName:</span> <span class="hljs-string">rook-cephfs</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs shell">kubectl get pvc<br>NAME             STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE<br>cephfs-fox-dev   Bound    pvc-451e4fc3-bda4-445a-b2a6-d5dd40a845d3   5Gi        RWX            rook-cephfs    22h<br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/" class="category-chain-item">云原生</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/kubernetes/" class="category-chain-item">kubernetes</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/kubernetes/kubernetes-storage/" class="category-chain-item">kubernetes storage</a>
+  
+  
+
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/cloud-native/" class="print-no-link">#cloud native</a>
+      
+        <a href="/tags/kubernetes/" class="print-no-link">#kubernetes</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>K8S Rook Ceph StorageClass</div>
+      <div>http://example.com/2022/05/29/cncf/kubernetes/storage/rook-ceph/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>洪宇轩</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年5月29日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/04/04/cncf/monitor/jaeger/" title="云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">云原生链路跟踪工具Jaeger+OpenTelemetry Collector部署详解</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/05/29/cncf/kubernetes/storage/hostpath/" title="K8S HostPath StorageClass">
+                        <span class="hidden-mobile">K8S HostPath StorageClass</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="busuanzi_container_site_pv" style="display: none">
+        总访问量 
+        <span id="busuanzi_value_site_pv"></span>
+         次
+      </span>
+    
+    
+      <span id="busuanzi_container_site_uv" style="display: none">
+        总访客数 
+        <span id="busuanzi_value_site_uv"></span>
+         人
+      </span>
+    
+    
+  
+</div>
+
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
